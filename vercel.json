@@ -24,10 +24,5 @@
         }
       ]
     }
-  ],
-  "functions": {
-    "src/api/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  }
+  ]
 }
