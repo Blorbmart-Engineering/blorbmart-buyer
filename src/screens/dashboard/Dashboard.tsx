@@ -1079,13 +1079,6 @@ function ProductCard({
         </div>
         <div className="bm-product-actions">
           <button
-            className="bm-add-cart"
-            type="button"
-            onClick={e => { e.stopPropagation(); /* add to cart logic */ }}
-          >
-            Add to cart
-          </button>
-          <button
             className="bm-quick-view"
             type="button"
             onClick={e => { e.stopPropagation(); onNavigate(item.id) }}
