@@ -13,17 +13,27 @@ interface BuyerData {
   createdAt: Date
 }
 
+interface ReferralData {
+  referralCode: string
+  referralCount: number
+  referralEarnings: number
+  buyerReferralEnabled: boolean
+  buyerReferralRewardNaira: number
+}
+
 export default function ProfileScreen() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { userData } = useUserData(user?.uid)
 
   const [buyerData, setBuyerData] = useState<BuyerData | null>(null)
+  const [referralData, setReferralData] = useState<ReferralData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     if (user) {
       loadBuyerData()
+      loadReferralData()
     } else {
       setIsLoading(false)
     }
@@ -46,6 +56,40 @@ export default function ProfileScreen() {
       console.error('Error loading buyer data:', error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const loadReferralData = async () => {
+    try {
+      if (!user) return
+      const idToken = await user.getIdToken()
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://blorbmart.onrender.com'}/api/referrals/me`, {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      })
+      const data = await response.json().catch(() => ({}))
+      if (response.ok && data?.data) {
+        setReferralData({
+          referralCode: data.data.referralCode || '',
+          referralCount: Number(data.data.referralCount || 0),
+          referralEarnings: Number(data.data.referralEarnings || 0),
+          buyerReferralEnabled: Boolean(data.data.buyerReferralEnabled),
+          buyerReferralRewardNaira: Number(data.data.buyerReferralRewardNaira || 0),
+        })
+      }
+    } catch (error) {
+      console.error('Error loading referral data:', error)
+    }
+  }
+
+  const copyReferralCode = async () => {
+    if (!referralData?.referralCode) return
+    try {
+      await navigator.clipboard.writeText(referralData.referralCode)
+      window.alert('Referral code copied')
+    } catch (error) {
+      console.error('Copy referral code failed:', error)
     }
   }
 
@@ -313,6 +357,65 @@ export default function ProfileScreen() {
             </div>
           </div>
         </div>
+
+        {referralData?.buyerReferralEnabled && (
+          <div style={{
+            marginBottom: '32px',
+            padding: '20px',
+            borderRadius: '20px',
+            background: 'linear-gradient(135deg, #0f172a, #1e293b)',
+            color: 'white',
+            boxShadow: '0 10px 24px rgba(15, 23, 42, 0.2)'
+          }}>
+            <div style={{ fontSize: '13px', opacity: 0.8, marginBottom: '6px' }}>
+              Buyer Referral
+            </div>
+            <div style={{ fontSize: '24px', fontWeight: '800', letterSpacing: '1px', marginBottom: '8px' }}>
+              {referralData.referralCode || 'Loading...'}
+            </div>
+            <div style={{ fontSize: '13px', opacity: 0.85, marginBottom: '16px', lineHeight: 1.5 }}>
+              Invite friends and earn ₦{referralData.buyerReferralRewardNaira.toFixed(0)} in your wallet for each successful referral.
+            </div>
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+              <div style={{
+                flex: 1,
+                padding: '14px',
+                borderRadius: '16px',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.12)'
+              }}>
+                <div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '4px' }}>Referrals</div>
+                <div style={{ fontSize: '22px', fontWeight: '700' }}>{referralData.referralCount}</div>
+              </div>
+              <div style={{
+                flex: 1,
+                padding: '14px',
+                borderRadius: '16px',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.12)'
+              }}>
+                <div style={{ fontSize: '12px', opacity: 0.7, marginBottom: '4px' }}>Earned</div>
+                <div style={{ fontSize: '22px', fontWeight: '700' }}>₦{referralData.referralEarnings.toFixed(2)}</div>
+              </div>
+            </div>
+            <button
+              onClick={copyReferralCode}
+              style={{
+                width: '100%',
+                height: '48px',
+                borderRadius: '14px',
+                border: '1px solid rgba(255,255,255,0.16)',
+                background: '#ffffff',
+                color: '#0f172a',
+                fontSize: '15px',
+                fontWeight: '700',
+                cursor: 'pointer'
+              }}
+            >
+              Copy Referral Code
+            </button>
+          </div>
+        )}
 
         {/* Settings Section */}
         <div style={{ marginBottom: '24px' }}>

@@ -22,12 +22,31 @@ export default function SignupScreen() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
+  const [referralCode, setReferralCode] = useState(() => new URLSearchParams(window.location.search).get('ref') || '')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [termsAccepted, setTermsAccepted] = useState(false)
+
+  const applyReferralCode = async (idToken: string, code: string) => {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://blorbmart.onrender.com'}/api/referrals/apply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ code: code.trim() }),
+    })
+
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(data?.message || 'Failed to apply referral code')
+    }
+
+    return data
+  }
 
   const handleSignup = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -107,7 +126,21 @@ export default function SignupScreen() {
         createdAt: serverTimestamp(),
       })
 
-      setSuccess('Account created successfully! Please verify your email.')
+      let successMessage = 'Account created successfully! Please verify your email.'
+      if (referralCode.trim()) {
+        try {
+          const idToken = await user.getIdToken()
+          await applyReferralCode(idToken, referralCode)
+          successMessage = 'Account created successfully! Referral applied and your inviter will receive their wallet reward.'
+        } catch (referralError) {
+          console.error('Referral apply error:', referralError)
+          const referralMessage =
+            referralError instanceof Error ? referralError.message : 'Referral code could not be applied.'
+          successMessage = `Account created successfully, but referral could not be applied: ${referralMessage}`
+        }
+      }
+
+      setSuccess(successMessage)
       setTimeout(() => navigate('/dashboard'), 2000)
       
     } catch (err: unknown) {
@@ -204,6 +237,14 @@ export default function SignupScreen() {
                   icon={<PhoneIcon />}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
+                />
+
+                <Field
+                  label="Referral code (optional)"
+                  placeholder="BLB123ABC"
+                  icon={<UserIcon />}
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
                 />
                 
                 <Field
