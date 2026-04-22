@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth, useUserData, useProducts } from '../../hooks/useFirebaseData'
+import { useCart } from '../../contexts/CartContext'
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 const SearchIcon = () => (
@@ -1153,6 +1154,7 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function Dashboard() {
   const navigate = useNavigate()
+  const { itemCount } = useCart()
   const [activeTab, setActiveTab] = useState('home')
   const [wishlist, setWishlist] = useState<Set<string>>(new Set())
   const [userName, setUserName] = useState('Guest')
@@ -1281,14 +1283,14 @@ export default function Dashboard() {
               </button>
 
               {/* Cart */}
-              <button
-                className="bm-hbtn bm-hbtn-icon"
-                type="button"
-                onClick={() => navigate('/cart')}
-                title="Cart"
-              >
-                <CartIcon count={2} />
-              </button>
+                <button
+                  className="bm-hbtn bm-hbtn-icon"
+                  type="button"
+                  onClick={() => navigate('/cart')}
+                  title="Cart"
+                >
+                  <CartIcon count={itemCount} />
+                </button>
 
               {/* Notifications - hide on very small screens */}
               <button

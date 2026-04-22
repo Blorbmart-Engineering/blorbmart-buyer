@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
+import { useCart } from '../../contexts/CartContext'
 
 type Product = {
   id: string
@@ -9,6 +10,7 @@ type Product = {
   description?: string
   price: number
   discountPrice?: number
+  vendorId?: string
   rating?: number
   totalReviews?: number
   totalSold?: number
@@ -156,6 +158,7 @@ const StarIcon = () => (
 export function ProductDetailsPage() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const { addItem } = useCart()
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [imageIndex, setImageIndex] = useState(0)
@@ -318,8 +321,47 @@ export function ProductDetailsPage() {
         </section>
 
         <div className="pd-footer">
-          <button className="pd-btn secondary" type="button">Add to Cart</button>
-          <button className="pd-btn primary" type="button">Buy Now</button>
+          <button
+            className="pd-btn secondary"
+            type="button"
+            onClick={() =>
+              addItem(
+                {
+                  id: product.id,
+                  name: product.name,
+                  price,
+                  image: images[0],
+                  storeName: product.storeName,
+                  vendorId: product.vendorId,
+                  categoryName: product.categoryName,
+                },
+                qty,
+              )
+            }
+          >
+            Add to Cart
+          </button>
+          <button
+            className="pd-btn primary"
+            type="button"
+            onClick={() => {
+              addItem(
+                {
+                  id: product.id,
+                  name: product.name,
+                  price,
+                  image: images[0],
+                  storeName: product.storeName,
+                  vendorId: product.vendorId,
+                  categoryName: product.categoryName,
+                },
+                qty,
+              )
+              navigate('/checkout')
+            }}
+          >
+            Buy Now
+          </button>
         </div>
       </div>
     </>

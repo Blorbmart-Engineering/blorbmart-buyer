@@ -106,8 +106,14 @@ export interface Product {
   discountPrice?: number
   currency: string
   vendor?: string
+  vendorId?: string
   storeName?: string
   productType?: string
+  categoryId?: string
+  categoryName?: string
+  subCategoryId?: string
+  subCategoryName?: string
+  stockQuantity?: number
   status: 'active' | 'draft' | 'archived'
   images: string[]
   variants: ProductVariant[]
