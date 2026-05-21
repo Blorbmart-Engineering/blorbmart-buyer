@@ -1,1056 +1,535 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useFirebaseData'
+import { dashboardCss } from '../../components/dashboard/dashboardStyles'
 
-// Wallet API Service (matching Flutter)
-class WalletApiService {
-  private static baseUrl = 'https://blorbmart.onrender.com/api/wallet'
+// ─── API Service ────────────────────────────────────────────────────────────────
+const BASE = `${import.meta.env.VITE_API_BASE_URL ?? 'https://blorbmart.onrender.com'}/api/wallet`
 
-  static async initiateFunding({
-    userId,
-    email,
-    amount,
-  }: {
-    userId: string
-    email: string
-    amount: number
-  }) {
-    try {
-      const response = await fetch(`${WalletApiService.baseUrl}/fund`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, email, amount }),
-      })
-      const data = await response.json()
-      if (response.status !== 200 || data.status !== 'success') {
-        throw new Error(data.message || 'Failed to initialize funding')
-      }
-      return data.data
-    } catch (error) {
-      console.warn('Payment API unavailable, showing demo:', error)
-      // For development, show a demo message
-      throw new Error('Payment processing is not available in development mode. This is a demo wallet interface.')
-    }
-  }
-
-  static async fetchBalance(userId: string): Promise<number> {
-    try {
-      const response = await fetch(`${WalletApiService.baseUrl}/${userId}`)
-      const data = await response.json()
-      if (response.status !== 200 || data.status !== 'success') {
-        throw new Error('Failed to fetch wallet balance')
-      }
-      return (data.data.balance as number) || 0
-    } catch (error) {
-      console.warn('Wallet API unavailable, using mock data:', error)
-      // Return mock balance for development
-      return 0
-    }
-  }
-
-  static async fetchTransactions(
-    userId: string,
-    { page = 1, limit = 100 }: { page?: number; limit?: number } = {}
-  ) {
-    try {
-      const response = await fetch(
-        `${WalletApiService.baseUrl}/${userId}/transactions?page=${page}&limit=${limit}`
-      )
-      const data = await response.json()
-      if (response.status !== 200 || data.status !== 'success') {
-        throw new Error('Failed to fetch transactions')
-      }
-      const raw = (data.data.transactions as any[]) || []
-      return raw.map((e) => ({
-        id: e.id || '',
-        userId: e.userId || '',
-        type: e.type || '',
-        amount: (e.amount as number) || 0,
-        previousBalance: (e.previousBalance as number) || 0,
-        newBalance: (e.newBalance as number) || 0,
-        status: e.status || 'pending',
-        paymentMethod: e.paymentMethod,
-        reference: e.reference || '',
-        description: e.description || '',
-        timestamp: new Date(e.timestamp || Date.now()),
-        completedAt: e.completedAt ? new Date(e.completedAt) : undefined,
-      }))
-    } catch (error) {
-      console.warn('Transactions API unavailable, using mock data:', error)
-      // Return mock transactions for development
-      return [
-        {
-          id: 'mock_1',
-          userId,
-          type: 'deposit' as const,
-          amount: 5000,
-          previousBalance: 0,
-          newBalance: 5000,
-          status: 'completed' as const,
-          paymentMethod: 'Paystack',
-          reference: 'mock_ref_1',
-          description: 'Wallet funding',
-          timestamp: new Date(Date.now() - 86400000), // 1 day ago
-          completedAt: new Date(Date.now() - 86400000),
-        },
-        {
-          id: 'mock_2',
-          userId,
-          type: 'withdrawal' as const,
-          amount: 1500,
-          previousBalance: 5000,
-          newBalance: 3500,
-          status: 'completed' as const,
-          paymentMethod: 'Wallet',
-          reference: 'mock_ref_2',
-          description: 'Order payment',
-          timestamp: new Date(Date.now() - 172800000), // 2 days ago
-          completedAt: new Date(Date.now() - 172800000),
-        }
-      ]
-    }
-  }
-
-  static async verifyPayment(reference: string) {
-    const response = await fetch(`${WalletApiService.baseUrl}/verify/${reference}`)
-    const data = await response.json()
-    if (response.status !== 200 || data.status !== 'success') {
-      throw new Error('Payment verification failed')
-    }
-    return {
-      ...data.data,
-      timestamp: new Date(data.data.timestamp),
-      completedAt: data.data.completedAt ? new Date(data.data.completedAt) : undefined,
-    }
-  }
+async function fetchBalance(userId: string): Promise<number> {
+  try {
+    const res = await fetch(`${BASE}/${userId}`)
+    const d = await res.json()
+    if (!res.ok || d.status !== 'success') throw new Error()
+    return Number(d.data?.balance ?? 0)
+  } catch { return 0 }
 }
 
-interface WalletTransaction {
+async function fetchTransactions(userId: string): Promise<WalletTx[]> {
+  try {
+    const res = await fetch(`${BASE}/${userId}/transactions?page=1&limit=100`)
+    const d = await res.json()
+    if (!res.ok || d.status !== 'success') throw new Error()
+    return ((d.data?.transactions ?? []) as Record<string, unknown>[]).map(e => ({
+      id: String(e.id ?? ''),
+      type: String(e.type ?? 'deposit') as 'deposit' | 'withdrawal',
+      amount: Number(e.amount ?? 0),
+      description: String(e.description ?? ''),
+      status: String(e.status ?? 'completed') as 'completed' | 'pending' | 'failed',
+      reference: String(e.reference ?? ''),
+      paymentMethod: e.paymentMethod ? String(e.paymentMethod) : undefined,
+      newBalance: Number(e.newBalance ?? 0),
+      timestamp: new Date(String(e.timestamp ?? Date.now())),
+    }))
+  } catch { return [] }
+}
+
+async function initiateFunding(userId: string, email: string, amount: number) {
+  const res = await fetch(`${BASE}/fund`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, email, amount }),
+  })
+  const d = await res.json()
+  if (!res.ok || d.status !== 'success') throw new Error(d.message ?? 'Failed to initialize funding')
+  return d.data as { authorization_url: string; reference: string }
+}
+
+async function verifyPayment(reference: string) {
+  const res = await fetch(`${BASE}/verify/${reference}`)
+  const d = await res.json()
+  if (!res.ok || d.status !== 'success') throw new Error('Payment verification failed')
+  return d.data as { status: string; amount: number }
+}
+
+// ─── Types ──────────────────────────────────────────────────────────────────────
+type WalletTx = {
   id: string
-  userId: string
   type: 'deposit' | 'withdrawal'
   amount: number
-  previousBalance: number
-  newBalance: number
-  status: 'completed' | 'pending' | 'failed'
-  paymentMethod?: string
-  reference: string
   description: string
+  status: 'completed' | 'pending' | 'failed'
+  reference: string
+  paymentMethod?: string
+  newBalance?: number
   timestamp: Date
-  completedAt?: Date
 }
 
+type Filter = 'all' | 'deposit' | 'withdrawal'
+
+// ─── Helpers ────────────────────────────────────────────────────────────────────
+const fmt = (v: number) =>
+  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(v)
+
+const fmtCompact = (v: number) =>
+  new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0, notation: 'compact' }).format(v)
+
+const fmtDate = (d: Date) =>
+  d.toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' }) +
+  ' · ' + d.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
+
+const groupByDate = (txns: WalletTx[]) => {
+  const groups: Record<string, WalletTx[]> = {}
+  txns.forEach(tx => {
+    const key = tx.timestamp.toLocaleDateString('en-NG', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    ;(groups[key] ??= []).push(tx)
+  })
+  return groups
+}
+
+const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
+  completed: { color: '#065f46', bg: '#d1fae5' },
+  pending:   { color: '#b45309', bg: '#fef3c7' },
+  failed:    { color: '#991b1b', bg: '#fee2e2' },
+}
+
+const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000]
+
+// ─── CSS ────────────────────────────────────────────────────────────────────────
+const css = `
+  .wl-root { min-height:100vh; background:var(--bg); font-family:'Plus Jakarta Sans',sans-serif; }
+  .wl-header { position:sticky; top:0; z-index:30; background:rgba(255,255,255,.95); backdrop-filter:blur(8px); border-bottom:1.5px solid var(--border); padding:14px 20px; display:flex; align-items:center; gap:12px; }
+  .wl-back { width:36px; height:36px; border-radius:50%; border:1.5px solid var(--border); background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
+  .wl-header-title { font-family:'Bricolage Grotesque',sans-serif; font-size:18px; font-weight:800; flex:1; text-align:center; }
+
+  .wl-body { max-width:600px; margin:0 auto; padding:24px 20px 80px; }
+
+  /* Balance card */
+  .wl-balance-card { border-radius:24px; background:linear-gradient(135deg,#2563EB 0%,#1d4ed8 100%); padding:24px; color:#fff; box-shadow:0 12px 32px rgba(37,99,235,.4); margin-bottom:20px; }
+  .wl-balance-label { font-size:13px; opacity:.85; margin-bottom:6px; }
+  .wl-balance-amount { font-family:'Bricolage Grotesque',sans-serif; font-size:42px; font-weight:800; margin-bottom:4px; line-height:1.1; }
+  .wl-balance-sub { font-size:12px; opacity:.75; }
+  .wl-balance-pending { margin-top:14px; background:rgba(255,255,255,.18); border-radius:10px; padding:10px 14px; font-size:13px; display:flex; align-items:center; gap:8px; }
+
+  /* Action buttons */
+  .wl-actions { display:flex; gap:12px; margin-bottom:24px; }
+  .wl-action-btn { flex:1; height:52px; border:none; border-radius:var(--radius-lg); font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:'Plus Jakarta Sans',sans-serif; }
+
+  /* Stats strip */
+  .wl-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:24px; }
+  .wl-stat { background:#fff; border:1.5px solid var(--border); border-radius:var(--radius-lg); padding:14px; text-align:center; }
+  .wl-stat-icon { font-size:22px; margin-bottom:6px; }
+  .wl-stat-val { font-family:'Bricolage Grotesque',sans-serif; font-size:16px; font-weight:800; color:var(--text); }
+  .wl-stat-lbl { font-size:11px; color:var(--text-2); margin-top:2px; }
+
+  /* Filter tabs */
+  .wl-filters { display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; padding-bottom:2px; }
+  .wl-filter { border:1.5px solid var(--border); background:#fff; border-radius:999px; padding:7px 16px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; color:var(--text-2); font-family:'Plus Jakarta Sans',sans-serif; }
+  .wl-filter.active { background:var(--blue); border-color:var(--blue); color:#fff; }
+
+  /* Date group */
+  .wl-date-label { font-size:12px; font-weight:700; color:var(--text-2); text-transform:uppercase; letter-spacing:.5px; margin:20px 0 8px; }
+
+  /* Transaction row */
+  .wl-tx { background:#fff; border:1.5px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px; display:flex; align-items:center; gap:14px; margin-bottom:10px; box-shadow:var(--shadow); }
+  .wl-tx-icon { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:800; flex-shrink:0; }
+  .wl-tx-desc { font-size:13px; font-weight:700; color:var(--text); }
+  .wl-tx-meta { font-size:11px; color:var(--text-2); margin-top:2px; }
+  .wl-tx-amount { font-size:15px; font-weight:800; }
+  .wl-tx-status { font-size:10px; font-weight:700; padding:2px 8px; border-radius:99px; margin-top:3px; text-align:right; }
+
+  /* Empty state */
+  .wl-empty { text-align:center; padding:56px 20px; background:#fff; border:1.5px solid var(--border); border-radius:var(--radius-lg); }
+  .wl-empty-icon { font-size:48px; margin-bottom:12px; }
+  .wl-empty-title { font-size:16px; font-weight:800; color:var(--text); margin-bottom:6px; }
+  .wl-empty-sub { font-size:13px; color:var(--text-2); }
+
+  /* Add funds modal */
+  .wl-modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:200; display:flex; align-items:flex-end; justify-content:center; }
+  @media(min-width:600px){ .wl-modal-bg { align-items:center; } }
+  .wl-modal { background:#fff; border-radius:24px 24px 0 0; width:100%; max-width:520px; padding:0 0 env(safe-area-inset-bottom,0); animation:fadeUp .25s ease; max-height:90vh; overflow-y:auto; }
+  @media(min-width:600px){ .wl-modal { border-radius:24px; } }
+  .wl-modal-handle { width:40px; height:4px; background:var(--border); border-radius:2px; margin:12px auto 20px; }
+  .wl-modal-body { padding:0 24px 28px; }
+  .wl-modal-title { font-family:'Bricolage Grotesque',sans-serif; font-size:22px; font-weight:800; margin-bottom:20px; }
+  .wl-amount-input { width:100%; padding:14px 16px; border:1.5px solid var(--border); border-radius:var(--radius); font-size:22px; font-weight:700; outline:none; font-family:'Bricolage Grotesque',sans-serif; color:var(--text); }
+  .wl-amount-input:focus { border-color:var(--blue); }
+  .wl-quick-grid { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 20px; }
+  .wl-quick-btn { padding:10px 16px; border-radius:var(--radius); border:1.5px solid var(--border); background:#fff; font-size:13px; font-weight:700; cursor:pointer; font-family:'Plus Jakarta Sans',sans-serif; color:var(--text-2); }
+  .wl-quick-btn.selected { border-color:var(--blue); color:var(--blue); background:var(--blue-light); }
+  .wl-paystack-chip { background:var(--blue-light); border:1.5px solid rgba(37,99,235,.2); border-radius:var(--radius); padding:12px 16px; display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+  .wl-submit-btn { width:100%; height:52px; background:var(--blue); color:#fff; border:none; border-radius:var(--radius); font-size:15px; font-weight:700; cursor:pointer; font-family:'Plus Jakarta Sans',sans-serif; }
+  .wl-submit-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+  /* Paystack confirm modal */
+  .wl-confirm { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:300; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .wl-confirm-box { background:#fff; border-radius:20px; padding:28px 24px; max-width:380px; width:100%; animation:fadeUp .2s ease; }
+  .wl-confirm-title { font-family:'Bricolage Grotesque',sans-serif; font-size:20px; font-weight:800; margin-bottom:10px; }
+  .wl-confirm-desc { font-size:14px; color:var(--text-2); line-height:1.55; margin-bottom:20px; }
+  .wl-confirm-btns { display:flex; flex-direction:column; gap:10px; }
+  .wl-confirm-primary { height:48px; background:var(--blue); color:#fff; border:none; border-radius:var(--radius); font-size:14px; font-weight:700; cursor:pointer; font-family:'Plus Jakarta Sans',sans-serif; }
+  .wl-confirm-secondary { height:44px; background:none; border:1.5px solid var(--border); border-radius:var(--radius); font-size:13px; font-weight:600; cursor:pointer; font-family:'Plus Jakarta Sans',sans-serif; color:var(--text-2); }
+  .wl-confirm-link { font-size:12px; color:var(--blue); text-decoration:underline; background:none; border:none; cursor:pointer; font-family:'Plus Jakarta Sans',sans-serif; text-align:center; margin-top:4px; }
+
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .wl-spinner { width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; animation:spin .7s linear infinite; }
+`
+
+// ─── Paystack Modal ─────────────────────────────────────────────────────────────
+function PaystackModal({
+  amount, reference, authUrl, onVerify, onCancel,
+}: {
+  amount: number; reference: string; authUrl: string
+  onVerify: () => void; onCancel: () => void
+}) {
+  return (
+    <div className="wl-confirm">
+      <div className="wl-confirm-box">
+        <div style={{ fontSize: 40, textAlign: 'center', marginBottom: 12 }}>💳</div>
+        <div className="wl-confirm-title" style={{ textAlign: 'center' }}>Complete Payment</div>
+        <div className="wl-confirm-desc" style={{ textAlign: 'center' }}>
+          A Paystack checkout page has been opened for <strong>{fmt(amount)}</strong>. Complete the payment there, then tap the button below.
+        </div>
+        <div className="wl-confirm-btns">
+          <button className="wl-confirm-primary" onClick={onVerify}>
+            ✓ I've Paid — Verify Now
+          </button>
+          <button
+            className="wl-confirm-link"
+            onClick={() => window.open(authUrl, '_blank')}
+          >
+            Reopen payment page
+          </button>
+          <button className="wl-confirm-secondary" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-3)', textAlign: 'center', marginTop: 10 }}>
+          Ref: {reference}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Component ─────────────────────────────────────────────────────────────
 export default function WalletScreen() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const [walletBalance, setWalletBalance] = useState(0)
-  const [transactions, setTransactions] = useState<WalletTransaction[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [hasError, setHasError] = useState(false)
-  const [errorMessage, setErrorMessage] = useState('')
-  const [retryCount, setRetryCount] = useState(0)
-  const maxRetries = 3
+  const [balance, setBalance] = useState(0)
+  const [txns, setTxns] = useState<WalletTx[]>([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [filter, setFilter] = useState<Filter>('all')
 
-  const [amount, setAmount] = useState('')
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false)
-  const [pendingAmount, setPendingAmount] = useState(0)
-  const [showAddFundsDialog, setShowAddFundsDialog] = useState(false)
+  const [showFundModal, setShowFundModal] = useState(false)
+  const [fundAmount, setFundAmount] = useState('')
+  const [processingPayment, setProcessingPayment] = useState(false)
+  const [paystackData, setPaystackData] = useState<{ amount: number; reference: string; authUrl: string } | null>(null)
+  const [verifying, setVerifying] = useState(false)
 
-  const [selectedFilter, setSelectedFilter] = useState('all')
-  const [allTransactions, setAllTransactions] = useState<WalletTransaction[]>([])
-
-  const quickAmounts = [500, 1000, 2000, 5000, 10000]
-
-  const currencyFormat = new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    minimumFractionDigits: 2,
-  })
-
-  const compactCurrencyFormat = new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    minimumFractionDigits: 2,
-    notation: 'compact',
-  })
-
-  useEffect(() => {
-    if (user) {
-      loadWalletData()
-    } else {
-      setIsLoading(false)
-    }
-  }, [user])
-
-  const loadWalletData = async () => {
+  const load = async (quiet = false) => {
     if (!user) return
-
-    setIsLoading(true)
-    setHasError(false)
-    setErrorMessage('')
-    setRetryCount(0)
-
+    if (!quiet) setLoading(true)
+    else setRefreshing(true)
     try {
-      await loadWalletBalance()
-      await loadTransactions()
-    } catch (error) {
-      console.error('Wallet data load error:', error)
-      
-      // Don't show error for mock data - it's expected in development
-      if (error instanceof Error && error.message.includes('development mode')) {
-        setHasError(true)
-        setErrorMessage('Demo Mode: Wallet features are simulated for development')
+      const [bal, all] = await Promise.all([fetchBalance(user.uid), fetchTransactions(user.uid)])
+      setBalance(bal)
+      setTxns(all.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()))
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  useEffect(() => { load() }, [user]) // eslint-disable-line
+
+  const filtered = useMemo(() =>
+    filter === 'all' ? txns : txns.filter(t => t.type === filter),
+  [txns, filter])
+
+  const grouped = useMemo(() => groupByDate(filtered), [filtered])
+
+  const totalDeposited = txns.filter(t => t.type === 'deposit').reduce((s, t) => s + t.amount, 0)
+  const totalSpent    = txns.filter(t => t.type === 'withdrawal').reduce((s, t) => s + t.amount, 0)
+
+  const handleFund = async () => {
+    const amount = parseFloat(fundAmount)
+    if (!amount || amount <= 0 || !user) return
+    setProcessingPayment(true)
+    try {
+      const data = await initiateFunding(user.uid, user.email ?? '', amount)
+      window.open(data.authorization_url, '_blank')
+      setShowFundModal(false)
+      setFundAmount('')
+      setPaystackData({ amount, reference: data.reference, authUrl: data.authorization_url })
+    } catch (e) {
+      alert(`Payment error: ${e instanceof Error ? e.message : 'Unknown error'}`)
+    } finally {
+      setProcessingPayment(false)
+    }
+  }
+
+  const handleVerify = async () => {
+    if (!paystackData) return
+    setVerifying(true)
+    try {
+      const result = await verifyPayment(paystackData.reference)
+      setPaystackData(null)
+      if (result.status === 'completed') {
+        await load(true)
+        alert(`${fmt(result.amount)} added to your wallet!`)
+      } else if (result.status === 'pending') {
+        alert('Payment is still processing — refresh in a moment.')
       } else {
-        const newRetryCount = retryCount + 1
-        setRetryCount(newRetryCount)
-        
-        if (newRetryCount < maxRetries) {
-          setTimeout(() => loadWalletData(), 2000)
-          return
-        }
-        
-        setHasError(true)
-        setErrorMessage('Unable to connect to wallet service. Please check your connection.')
+        alert(`Payment status: ${result.status}. Contact support if charged.`)
       }
+    } catch {
+      alert('Verification failed. Contact support with your reference number.')
     } finally {
-      setIsLoading(false)
+      setVerifying(false)
     }
   }
-
-  const loadWalletBalance = async () => {
-    if (!user) return
-    const balance = await WalletApiService.fetchBalance(user.uid)
-    setWalletBalance(balance)
-  }
-
-  const loadTransactions = async () => {
-    if (!user) return
-    const all = await WalletApiService.fetchTransactions(user.uid)
-    all.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-    setAllTransactions(all)
-    applyFiltersLocally()
-  }
-
-  const applyFiltersLocally = () => {
-    let filtered = [...allTransactions]
-
-    if (selectedFilter !== 'all') {
-      filtered = filtered.filter((t) => t.type === selectedFilter)
-    }
-
-    setTransactions(filtered)
-  }
-
-  const handleRefresh = async () => {
-    if (isRefreshing || !user) return
-    setIsRefreshing(true)
-    try {
-      await loadWalletBalance()
-      await loadTransactions()
-    } catch (error) {
-      console.error('Refresh error:', error)
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
-
-  const addFunds = async (fundAmount: number) => {
-    if (fundAmount <= 0) {
-      alert('Please enter a valid amount')
-      return
-    }
-    await processPayment(fundAmount)
-  }
-
-  const processPayment = async (fundAmount: number) => {
-    if (!user) return
-
-    setIsProcessingPayment(true)
-    setPendingAmount(fundAmount)
-
-    try {
-      const fundData = await WalletApiService.initiateFunding({
-        userId: user.uid,
-        email: user.email || 'user@blorbmart.com',
-        amount: fundAmount,
-      })
-
-      const authorizationUrl = fundData.authorization_url
-      const reference = fundData.reference
-
-      // Open payment URL in new tab
-      window.open(authorizationUrl, '_blank')
-
-      // Show payment confirmation dialog
-      setTimeout(() => {
-        if (window.confirm('Paystack checkout opened. Please complete the payment and click OK to verify.')) {
-          verifyPayment(reference)
-        }
-      }, 2000)
-    } catch (error) {
-      console.error('Payment error:', error)
-      alert(`Payment failed: ${error}`)
-    } finally {
-      setIsProcessingPayment(false)
-      setPendingAmount(0)
-      setAmount('')
-      setShowAddFundsDialog(false)
-    }
-  }
-
-  const verifyPayment = async (reference: string) => {
-    setIsProcessingPayment(true)
-
-    try {
-      const txn = await WalletApiService.verifyPayment(reference)
-
-      if (txn.status === 'completed') {
-        await loadWalletBalance()
-        await loadTransactions()
-        alert(`${currencyFormat.format(txn.amount)} added to your wallet`)
-      } else if (txn.status === 'pending') {
-        alert('Payment is still processing. Please wait a moment and refresh.')
-      } else {
-        throw new Error(`Payment status: ${txn.status}`)
-      }
-    } catch (error) {
-      console.error('Verification error:', error)
-      alert('Payment verification failed. Please contact support.')
-    } finally {
-      setIsProcessingPayment(false)
-    }
-  }
-
-  const getTransactionColor = (type: string) => {
-    switch (type) {
-      case 'deposit': return '#00B894'
-      case 'withdrawal': return '#f55500'
-      default: return '#5156f1'
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return '#00B894'
-      case 'pending': return '#ffc200'
-      case 'failed': return '#f55500'
-      default: return '#5156f1'
-    }
-  }
-
-  const getTransactionIcon = (type: string) => {
-    switch (type) {
-      case 'deposit': return '↓'
-      case 'withdrawal': return '↑'
-      default: return '💳'
-    }
-  }
-
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date)
-  }
-
-  if (!user) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: '#f5f6fa',
-        fontFamily: 'DM Sans, sans-serif'
-      }}>
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          <div style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            background: '#f55500',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 24px',
-            fontSize: '40px'
-          }}>🔒</div>
-          <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#000', marginBottom: '12px' }}>
-            Please log in
-          </h2>
-          <p style={{ fontSize: '15px', color: '#666666', marginBottom: '32px' }}>
-            Sign in to view your wallet balance and transactions
-          </p>
-          <button
-            onClick={() => navigate('/login')}
-            style={{
-              width: '100%',
-              height: '56px',
-              background: '#5156f1',
-              color: 'white',
-              border: 'none',
-              borderRadius: '16px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
-            Sign In
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  if (isLoading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: '#f5f6fa'
-      }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid #e5e7eb',
-            borderTop: '4px solid #1F77F1',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 16px'
-          }}></div>
-          <p style={{ color: '#6b7280', fontFamily: 'DM Sans, sans-serif' }}>Loading wallet...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (hasError && transactions.length === 0) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: '#f5f6fa',
-        fontFamily: 'DM Sans, sans-serif'
-      }}>
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          <div style={{
-            fontSize: '80px',
-            marginBottom: '24px'
-          }}>⚠️</div>
-          <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#000', marginBottom: '12px' }}>
-            Connection Error
-          </h2>
-          <p style={{ fontSize: '15px', color: '#666666', marginBottom: '32px' }}>
-            {errorMessage}
-          </p>
-          <button
-            onClick={loadWalletData}
-            style={{
-              width: '100%',
-              height: '56px',
-              background: '#5156f1',
-              color: 'white',
-              border: 'none',
-              borderRadius: '16px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}
-          >
-            🔄 Try Again
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  const totalDeposited = allTransactions
-    .filter(t => t.type === 'deposit')
-    .reduce((sum, t) => sum + t.amount, 0)
-
-  const totalSpent = allTransactions
-    .filter(t => t.type === 'withdrawal')
-    .reduce((sum, t) => sum + t.amount, 0)
 
   return (
-    <div style={{ background: 'white', minHeight: '100vh', fontFamily: 'DM Sans, sans-serif' }}>
-      {/* Header */}
-      <div style={{
-        padding: '20px',
-        borderBottom: '1px solid #f0f0f0',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{
-            background: 'none',
-            border: 'none',
-            fontSize: '24px',
-            cursor: 'pointer'
-          }}
-        >
-          ←
-        </button>
-        <h1 style={{ fontSize: '18px', fontWeight: '700', color: '#192328', margin: 0 }}>
-          Wallet
-        </h1>
-        <div style={{ width: '24px' }}></div>
-      </div>
+    <>
+      <style>{dashboardCss}</style>
+      <style>{css}</style>
 
-      <div style={{ padding: '20px' }}>
-        {/* Balance Card */}
-        <div style={{
-          margin: '0 0 20px',
-          padding: '24px',
-          background: 'linear-gradient(135deg, #5156f1, #1f77f1)',
-          borderRadius: '24px',
-          boxShadow: '0 10px 20px rgba(81, 86, 241, 0.3)',
-          color: 'white'
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '12px'
-          }}>
-            <span style={{ fontSize: '16px', opacity: 0.9 }}>Current Balance</span>
-            <span style={{ fontSize: '24px' }}>💳</span>
-          </div>
-          <div style={{ fontSize: '40px', fontWeight: '800', marginBottom: '8px' }}>
-            {currencyFormat.format(walletBalance)}
-          </div>
-          <div style={{ fontSize: '14px', opacity: 0.8 }}>
-            Available for shopping
-          </div>
-          {pendingAmount > 0 && (
-            <div style={{
-              marginTop: '16px',
-              padding: '12px',
-              background: 'rgba(255, 255, 255, 0.2)',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <div style={{
-                width: '12px',
-                height: '12px',
-                border: '2px solid white',
-                borderTop: '2px solid transparent',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-              }}></div>
-              Processing: {currencyFormat.format(pendingAmount)}
-            </div>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          marginBottom: '32px'
-        }}>
-          <button
-            onClick={() => setShowAddFundsDialog(true)}
-            disabled={isProcessingPayment}
-            style={{
-              flex: 1,
-              height: '56px',
-              background: '#00B894',
-              color: 'white',
-              border: 'none',
-              borderRadius: '16px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: isProcessingPayment ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}
-          >
-            {isProcessingPayment ? (
-              <>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  border: '2px solid white',
-                  borderTop: '2px solid transparent',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite'
-                }}></div>
-                Processing...
-              </>
-            ) : (
-              <>
-                + Add Funds
-              </>
-            )}
+      <div className="wl-root">
+        <header className="wl-header">
+          <button className="wl-back" type="button" onClick={() => navigate(-1)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
           </button>
+          <span className="wl-header-title">My Wallet</span>
           <button
-            style={{
-              flex: 1,
-              height: '56px',
-              background: '#192328',
-              color: 'white',
-              border: 'none',
-              borderRadius: '16px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}
+            type="button"
+            onClick={() => load(true)}
+            style={{ width: 36, height: 36, border: '1.5px solid var(--border)', background: '#fff', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
           >
-            🎁 Gift Cards
-            <span style={{ fontSize: '10px', opacity: 0.8 }}>Coming Soon</span>
-          </button>
-        </div>
-
-        {/* Statistics */}
-        <div style={{
-          margin: '0 0 32px',
-          padding: '20px',
-          background: 'white',
-          borderRadius: '20px',
-          border: '1px solid #f0f0f0',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)'
-        }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#000', marginBottom: '20px' }}>
-            Wallet Statistics
-          </h3>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-around'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{
-                width: '50px',
-                height: '50px',
-                borderRadius: '50%',
-                background: 'rgba(0, 184, 148, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 8px',
-                fontSize: '24px'
-              }}>↓</div>
-              <div style={{ fontSize: '16px', fontWeight: '800', color: '#000' }}>
-                {compactCurrencyFormat.format(totalDeposited)}
-              </div>
-              <div style={{ fontSize: '11px', color: '#666666' }}>Total Deposited</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{
-                width: '50px',
-                height: '50px',
-                borderRadius: '50%',
-                background: 'rgba(245, 85, 0, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 8px',
-                fontSize: '24px'
-              }}>↑</div>
-              <div style={{ fontSize: '16px', fontWeight: '800', color: '#000' }}>
-                {compactCurrencyFormat.format(totalSpent)}
-              </div>
-              <div style={{ fontSize: '11px', color: '#666666' }}>Total Spent</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{
-                width: '50px',
-                height: '50px',
-                borderRadius: '50%',
-                background: 'rgba(81, 86, 241, 0.1)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 8px',
-                fontSize: '24px'
-              }}>📄</div>
-              <div style={{ fontSize: '16px', fontWeight: '800', color: '#000' }}>
-                {allTransactions.length}
-              </div>
-              <div style={{ fontSize: '11px', color: '#666666' }}>Transactions</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Transactions Header */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '20px'
-        }}>
-          <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#000', margin: 0 }}>
-            Transactions ({transactions.length})
-          </h3>
-          <button
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            style={{
-              padding: '8px 16px',
-              background: '#f8f9fa',
-              color: '#5156f1',
-              border: '1px solid #dee2e6',
-              borderRadius: '12px',
-              fontSize: '13px',
-              fontWeight: '600',
-              cursor: isRefreshing ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            {isRefreshing ? (
-              <div style={{
-                width: '12px',
-                height: '12px',
-                border: '2px solid #5156f1',
-                borderTop: '2px solid transparent',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-              }}></div>
-            ) : (
-              '🔄'
-            )}
-            Refresh
-          </button>
-        </div>
-
-        {/* Filter Chips */}
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-          marginBottom: '20px',
-          overflowX: 'auto'
-        }}>
-          {['all', 'deposit', 'withdrawal'].map((filter) => (
-            <button
-              key={filter}
-              onClick={() => {
-                setSelectedFilter(filter)
-                applyFiltersLocally()
-              }}
-              style={{
-                padding: '8px 16px',
-                background: selectedFilter === filter ? '#5156f1' : '#f8f9fa',
-                color: selectedFilter === filter ? 'white' : '#666666',
-                border: selectedFilter === filter ? '1px solid #5156f1' : '1px solid #dee2e6',
-                borderRadius: '20px',
-                fontSize: '13px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {filter.charAt(0).toUpperCase() + filter.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        {/* Transactions List */}
-        {transactions.length === 0 ? (
-          <div style={{
-            padding: '60px 0',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '60px', marginBottom: '16px' }}>📄</div>
-            <div style={{ fontSize: '16px', color: '#666666', marginBottom: '8px' }}>
-              No transactions yet
-            </div>
-            <div style={{ fontSize: '14px', color: '#888888' }}>
-              Your transactions will appear here
-            </div>
-          </div>
-        ) : (
-          <div>
-            {transactions.map((transaction) => (
-              <div
-                key={transaction.id}
-                style={{
-                  marginBottom: '12px',
-                  padding: '16px',
-                  background: 'white',
-                  borderRadius: '16px',
-                  border: '1px solid #f0f0f0',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
-                  cursor: 'pointer'
-                }}
-                onClick={() => {
-                  alert(`Transaction Details:\n\nReference: ${transaction.reference}\nDescription: ${transaction.description}\nAmount: ${transaction.type === 'deposit' ? '+' : '-'}${currencyFormat.format(transaction.amount)}\nStatus: ${transaction.status}\nDate: ${formatDate(transaction.timestamp)}`)
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '50%',
-                    background: `${getTransactionColor(transaction.type)}20`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '20px',
-                    color: getTransactionColor(transaction.type)
-                  }}>
-                    {getTransactionIcon(transaction.type)}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      marginBottom: '4px'
-                    }}>
-                      <div style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#000',
-                        flex: 1,
-                        marginRight: '8px'
-                      }}>
-                        {transaction.description}
-                      </div>
-                      <div style={{
-                        fontSize: '15px',
-                        fontWeight: '700',
-                        color: getTransactionColor(transaction.type)
-                      }}>
-                        {transaction.type === 'deposit' ? '+' : '-'}{currencyFormat.format(transaction.amount)}
-                      </div>
-                    </div>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <div style={{
-                        fontSize: '12px',
-                        color: '#666666'
-                      }}>
-                        {formatDate(transaction.timestamp)}
-                      </div>
-                      <div style={{
-                        padding: '4px 8px',
-                        background: `${getStatusColor(transaction.status)}20`,
-                        borderRadius: '6px',
-                        fontSize: '10px',
-                        fontWeight: '700',
-                        color: getStatusColor(transaction.status)
-                      }}>
-                        {transaction.status.toUpperCase()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Add Funds Dialog */}
-      {showAddFundsDialog && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'flex-end',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '24px 24px 0 0',
-            padding: '24px',
-            width: '100%',
-            maxHeight: '80vh',
-            overflowY: 'auto'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '24px'
-            }}>
-              <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#000', margin: 0 }}>
-                Add Funds
-              </h2>
-              <button
-                onClick={() => setShowAddFundsDialog(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#666'
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '16px', fontWeight: '600', color: '#000', display: 'block', marginBottom: '12px' }}>
-                Amount (₦)
-              </label>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="Enter amount"
-                style={{
-                  width: '100%',
-                  padding: '16px 20px',
-                  fontSize: '18px',
-                  fontWeight: '600',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '16px',
-                  outline: 'none',
-                }}
-          />
-        </div>
-
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ fontSize: '16px', fontWeight: '600', color: '#000', display: 'block', marginBottom: '12px' }}>
-            Quick Add
-          </label>
-          <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '12px'
-          }}>
-            {quickAmounts.map((quickAmount) => (
-              <button
-                key={quickAmount}
-                onClick={() => setAmount(quickAmount.toString())}
-                style={{
-                  padding: '12px 20px',
-                  background: amount === quickAmount.toString() ? '#5156f1' : '#f8f9fa',
-                  color: amount === quickAmount.toString() ? 'white' : '#5156f1',
-                  border: amount === quickAmount.toString() ? '1px solid #5156f1' : '1px solid #dee2e6',
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                {currencyFormat.format(quickAmount)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ marginBottom: '32px' }}>
-          <label style={{ fontSize: '16px', fontWeight: '600', color: '#000', display: 'block', marginBottom: '12px' }}>
-            Payment Method
-          </label>
-          <div style={{
-            padding: '16px',
-            background: 'rgba(31, 119, 241, 0.1)',
-            borderRadius: '16px',
-            border: '2px solid #1f77f1',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px'
-          }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
-              background: 'rgba(31, 119, 241, 0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '20px'
-            }}>💳</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '15px', fontWeight: '600', color: '#000' }}>
-                Paystack
-              </div>
-              <div style={{ fontSize: '12px', color: '#666666' }}>
-                Secure payment gateway
-              </div>
-            </div>
-            <div style={{ fontSize: '20px', color: '#1f77f1' }}>✓</div>
-          </div>
-        </div>
-
-        <button
-          onClick={() => {
-            const fundAmount = parseFloat(amount) || 0
-            if (fundAmount > 0) {
-              setShowAddFundsDialog(false)
-              addFunds(fundAmount)
+            {refreshing
+              ? <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid var(--blue)', borderTopColor: 'transparent', animation: 'spin .7s linear infinite' }} />
+              : <span style={{ fontSize: 14 }}>↻</span>
             }
-          }}
-          disabled={isProcessingPayment || !amount || parseFloat(amount) <= 0}
-          style={{
-            width: '100%',
-            height: '56px',
-            background: isProcessingPayment || !amount || parseFloat(amount) <= 0 ? '#ccc' : '#5156f1',
-            color: 'white',
-            border: 'none',
-            borderRadius: '16px',
-            fontSize: '16px',
-            fontWeight: '600',
-            cursor: isProcessingPayment || !amount || parseFloat(amount) <= 0 ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px'
-          }}
-        >
-          {isProcessingPayment ? (
-            <>
-              <div style={{
-                width: '20px',
-                height: '20px',
-                border: '2px solid white',
-                borderTop: '2px solid transparent',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite'
-              }}></div>
-              Processing...
-            </>
-          ) : (
-            'Add Funds'
-          )}
-        </button>
-      </div>
-    </div>
-  )}
+          </button>
+        </header>
 
-  <style>{`
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  `}</style>
-</div>
-)
+        <div className="wl-body">
+
+          {/* Balance card */}
+          <div className="wl-balance-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div className="wl-balance-label">Current Balance</div>
+                {loading
+                  ? <div style={{ width: 180, height: 44, borderRadius: 10, background: 'rgba(255,255,255,.3)', marginBottom: 4 }} />
+                  : <div className="wl-balance-amount">{fmt(balance)}</div>
+                }
+                <div className="wl-balance-sub">Available for shopping</div>
+              </div>
+              <span style={{ fontSize: 32 }}>💳</span>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="wl-actions">
+            <button
+              className="wl-action-btn"
+              style={{ background: '#10b981', color: '#fff' }}
+              onClick={() => setShowFundModal(true)}
+              disabled={processingPayment}
+            >
+              {processingPayment ? <div className="wl-spinner" /> : '＋'} Add Funds
+            </button>
+            <button
+              className="wl-action-btn"
+              style={{ background: '#0f172a', color: '#fff', opacity: .7, cursor: 'not-allowed' }}
+              disabled
+            >
+              🎁 Gift Cards <span style={{ fontSize: 10, opacity: .7 }}>Soon</span>
+            </button>
+          </div>
+
+          {/* Stats strip */}
+          {!loading && (
+            <div className="wl-stats">
+              <div className="wl-stat">
+                <div className="wl-stat-icon" style={{ color: '#10b981' }}>↓</div>
+                <div className="wl-stat-val">{fmtCompact(totalDeposited)}</div>
+                <div className="wl-stat-lbl">Deposited</div>
+              </div>
+              <div className="wl-stat">
+                <div className="wl-stat-icon" style={{ color: '#ef4444' }}>↑</div>
+                <div className="wl-stat-val">{fmtCompact(totalSpent)}</div>
+                <div className="wl-stat-lbl">Spent</div>
+              </div>
+              <div className="wl-stat">
+                <div className="wl-stat-icon">📄</div>
+                <div className="wl-stat-val">{txns.length}</div>
+                <div className="wl-stat-lbl">Transactions</div>
+              </div>
+            </div>
+          )}
+
+          {/* Filter tabs */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 17, fontWeight: 800 }}>
+              Transactions ({filtered.length})
+            </div>
+          </div>
+          <div className="wl-filters">
+            {([
+              { key: 'all', label: 'All' },
+              { key: 'deposit', label: 'Credits' },
+              { key: 'withdrawal', label: 'Debits' },
+            ] as { key: Filter; label: string }[]).map(({ key, label }) => (
+              <button
+                key={key}
+                className={`wl-filter${filter === key ? ' active' : ''}`}
+                onClick={() => setFilter(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Transactions */}
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[...Array(4)].map((_, i) => (
+                <div key={i} style={{ background: '#fff', border: '1.5px solid var(--border)', borderRadius: 14, padding: '14px 16px', display: 'flex', gap: 14 }}>
+                  <div className="bm-skeleton" style={{ width: 44, height: 44, borderRadius: '50%', flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div className="bm-skeleton" style={{ height: 13, marginBottom: 8, width: '60%' }} />
+                    <div className="bm-skeleton" style={{ height: 11, width: '40%' }} />
+                  </div>
+                  <div className="bm-skeleton" style={{ width: 60, height: 18, borderRadius: 8 }} />
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="wl-empty">
+              <div className="wl-empty-icon">📄</div>
+              <div className="wl-empty-title">No transactions yet</div>
+              <div className="wl-empty-sub">Add funds or make a purchase to see history here.</div>
+            </div>
+          ) : (
+            Object.entries(grouped).map(([date, dateTxns]) => (
+              <div key={date}>
+                <div className="wl-date-label">{date}</div>
+                {dateTxns.map(tx => {
+                  const isCredit = tx.type === 'deposit'
+                  const amtColor = isCredit ? '#10b981' : '#ef4444'
+                  const iconBg = isCredit ? '#d1fae5' : '#fee2e2'
+                  const statusStyle = STATUS_STYLE[tx.status] ?? STATUS_STYLE.completed
+                  return (
+                    <div key={tx.id} className="wl-tx">
+                      <div className="wl-tx-icon" style={{ background: iconBg, color: amtColor }}>
+                        {isCredit ? '↓' : '↑'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="wl-tx-desc">{tx.description || (isCredit ? 'Wallet funding' : 'Payment')}</div>
+                        <div className="wl-tx-meta">{fmtDate(tx.timestamp)}{tx.paymentMethod ? ` · ${tx.paymentMethod}` : ''}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div className="wl-tx-amount" style={{ color: amtColor }}>
+                          {isCredit ? '+' : '−'}{fmt(tx.amount)}
+                        </div>
+                        <div className="wl-tx-status" style={{ background: statusStyle.bg, color: statusStyle.color }}>
+                          {tx.status.toUpperCase()}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ))
+          )}
+
+        </div>
+      </div>
+
+      {/* Add Funds Modal */}
+      {showFundModal && (
+        <div className="wl-modal-bg" onClick={() => setShowFundModal(false)}>
+          <div className="wl-modal" onClick={e => e.stopPropagation()}>
+            <div className="wl-modal-handle" />
+            <div className="wl-modal-body">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <div className="wl-modal-title" style={{ margin: 0 }}>Add Funds</div>
+                <button onClick={() => setShowFundModal(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', lineHeight: 1 }}>×</button>
+              </div>
+
+              <div style={{ marginBottom: 4, fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>Amount (₦)</div>
+              <input
+                className="wl-amount-input"
+                type="number"
+                min="100"
+                value={fundAmount}
+                onChange={e => setFundAmount(e.target.value)}
+                placeholder="0"
+              />
+
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)', margin: '14px 0 8px' }}>Quick amounts</div>
+              <div className="wl-quick-grid">
+                {QUICK_AMOUNTS.map(qa => (
+                  <button
+                    key={qa}
+                    className={`wl-quick-btn${fundAmount === String(qa) ? ' selected' : ''}`}
+                    onClick={() => setFundAmount(String(qa))}
+                  >
+                    {fmt(qa)}
+                  </button>
+                ))}
+              </div>
+
+              <div className="wl-paystack-chip">
+                <span style={{ fontSize: 22 }}>💳</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--blue)' }}>Paystack</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-2)' }}>Secure payment gateway</div>
+                </div>
+                <span style={{ color: 'var(--blue)', fontWeight: 800 }}>✓</span>
+              </div>
+
+              <button
+                className="wl-submit-btn"
+                onClick={handleFund}
+                disabled={processingPayment || !fundAmount || parseFloat(fundAmount) <= 0}
+              >
+                {processingPayment
+                  ? <span style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}><div className="wl-spinner" /> Processing…</span>
+                  : `Fund Wallet${fundAmount && parseFloat(fundAmount) > 0 ? ` — ${fmt(parseFloat(fundAmount))}` : ''}`
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Paystack confirmation modal */}
+      {paystackData && (
+        <PaystackModal
+          amount={paystackData.amount}
+          reference={paystackData.reference}
+          authUrl={paystackData.authUrl}
+          onVerify={handleVerify}
+          onCancel={() => setPaystackData(null)}
+        />
+      )}
+
+      {/* Verifying overlay */}
+      {verifying && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: '28px 32px', textAlign: 'center', minWidth: 200 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid var(--blue)', borderTopColor: 'transparent', animation: 'spin .7s linear infinite', margin: '0 auto 14px' }} />
+            <div style={{ fontWeight: 700 }}>Verifying payment…</div>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }

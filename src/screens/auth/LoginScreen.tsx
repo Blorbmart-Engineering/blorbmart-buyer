@@ -86,7 +86,7 @@ export default function LoginScreen() {
                   <div className={`check-box ${remember ? 'checked' : ''}`} />
                   <span>Remember me</span>
                 </label>
-                <button className="forgot-link" type="button">
+                <button className="forgot-link" type="button" onClick={() => navigate('/forgot-password')}>
                   Forgot password?
                 </button>
               </div>
