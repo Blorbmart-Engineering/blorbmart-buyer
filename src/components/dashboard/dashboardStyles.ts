@@ -1,17 +1,19 @@
 export const dashboardCss = `
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@400;500;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Bricolage+Grotesque:wght@400;500;600;700;800&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --blue: #2563EB;
+    --blue: #1F77F1;
+    --blue-dark: #1055C8;
     --blue-light: #EFF6FF;
-    --orange: #F97316;
+    --purple: #5156F1;
+    --orange: #FF5500;
     --orange-light: #FFF7ED;
-    --text: #0F172A;
+    --text: #192328;
     --text-2: #475569;
     --text-3: #94A3B8;
-    --bg: #F8FAFC;
+    --bg: #F5F5F5;
     --white: #FFFFFF;
     --border: #E2E8F0;
     --card: #FFFFFF;
@@ -26,7 +28,7 @@ export const dashboardCss = `
   body { background: var(--bg); overflow-x: hidden; width: 100%; }
 
   .bm-root {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Raleway', 'Plus Jakarta Sans', sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
