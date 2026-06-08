@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../../lib/firebase'
 import {
-  css, Field, GoogleIcon, AppleIcon, MailIcon, LockIcon,
+  css, Field, GoogleIcon, AppleIcon, MailIcon, LockIcon, signInWithGoogle,
 } from './AuthShared'
 
 export default function LoginScreen() {
@@ -12,6 +12,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
 
   const handleLogin = async (event: React.FormEvent) => {
@@ -34,6 +35,21 @@ export default function LoginScreen() {
       setError(msg)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    setError('')
+    setGoogleLoading(true)
+    try {
+      await signInWithGoogle()
+      navigate('/dashboard')
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code ?? ''
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return
+      setError((err as { message?: string })?.message ?? 'Google sign-in failed. Please try again.')
+    } finally {
+      setGoogleLoading(false)
     }
   }
 
@@ -100,8 +116,10 @@ export default function LoginScreen() {
           </div>
 
           <div className="social-grid">
-            <button className="social-btn" type="button"><GoogleIcon /><span>Google</span></button>
-            <button className="social-btn apple" type="button"><AppleIcon /><span>Apple</span></button>
+            <button className="social-btn" type="button" disabled={googleLoading || loading} onClick={handleGoogleLogin}>
+              <GoogleIcon /><span>{googleLoading ? 'Signing in…' : 'Google'}</span>
+            </button>
+            <button className="social-btn apple" type="button" disabled><AppleIcon /><span>Apple</span></button>
           </div>
 
           <div className="auth-nav-row">

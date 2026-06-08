@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
+import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getAnalytics, isSupported } from 'firebase/analytics'
 
@@ -26,4 +26,5 @@ if (typeof window !== 'undefined') {
   })
 }
 
+export const googleProvider = new GoogleAuthProvider()
 export { app, auth, db }

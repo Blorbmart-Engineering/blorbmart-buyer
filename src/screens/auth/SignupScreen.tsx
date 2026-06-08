@@ -4,7 +4,7 @@ import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, db } from '../../lib/firebase'
 import {
-  css, Field, GoogleIcon, AppleIcon, MailIcon, LockIcon, UserIcon, PhoneIcon,
+  css, Field, GoogleIcon, AppleIcon, MailIcon, LockIcon, UserIcon, PhoneIcon, signInWithGoogle,
 } from './AuthShared'
 
 export default function SignupScreen() {
@@ -18,6 +18,7 @@ export default function SignupScreen() {
   const [email, setEmail]               = useState('')
   const [password, setPassword]         = useState('')
   const [loading, setLoading]           = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError]               = useState('')
   const [success, setSuccess]           = useState('')
   const [termsAccepted, setTermsAccepted] = useState(false)
@@ -107,6 +108,21 @@ export default function SignupScreen() {
     }
   }
 
+  const handleGoogleSignup = async () => {
+    setError(''); setSuccess('')
+    setGoogleLoading(true)
+    try {
+      await signInWithGoogle()
+      navigate('/dashboard')
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code ?? ''
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return
+      setError((err as { message?: string })?.message ?? 'Google sign-in failed. Please try again.')
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
+
   return (
     <>
       <style>{css}</style>
@@ -191,8 +207,10 @@ export default function SignupScreen() {
           </div>
 
           <div className="social-grid">
-            <button className="social-btn" type="button"><GoogleIcon /><span>Google</span></button>
-            <button className="social-btn apple" type="button"><AppleIcon /><span>Apple</span></button>
+            <button className="social-btn" type="button" disabled={googleLoading || loading} onClick={handleGoogleSignup}>
+              <GoogleIcon /><span>{googleLoading ? 'Signing in…' : 'Google'}</span>
+            </button>
+            <button className="social-btn apple" type="button" disabled><AppleIcon /><span>Apple</span></button>
           </div>
 
           <div className="auth-nav-row">

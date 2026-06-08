@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import type { ChangeEvent, ReactNode } from 'react'
+import { signInWithPopup } from 'firebase/auth'
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { auth, db, googleProvider } from '../../lib/firebase'
 
 // ─── CSS matching Flutter's login_screen.dart design ──────────────────────────
 export const css = `
@@ -12,7 +15,6 @@ export const css = `
     flex-direction: column;
     background: linear-gradient(to bottom, #1055C8 0%, #1F77F1 55%, #1A6ADE 100%);
     position: relative;
-    overflow: hidden;
   }
 
   /* Decorative circles (Flutter's Positioned white circles) */
@@ -37,12 +39,12 @@ export const css = `
 
   /* Top blue area: logo + tagline */
   .auth-top {
-    flex: 1;
+    flex: none;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 48px 28px 28px;
+    padding: 40px 28px 24px;
     position: relative;
     z-index: 1;
     animation: fadeSlideDown .5s both;
@@ -68,10 +70,10 @@ export const css = `
   .auth-sheet {
     background: #fff;
     border-radius: 36px 36px 0 0;
-    padding: 32px 28px 40px;
+    padding: 32px 28px calc(40px + env(safe-area-inset-bottom, 0px));
     position: relative;
     z-index: 2;
-    overflow-y: auto;
+    flex: 1;
     animation: slideUp .45s .1s both;
   }
   @media (min-width: 560px) {
@@ -88,7 +90,7 @@ export const css = `
     .auth-sheet {
       border-radius: 28px;
       width: 440px;
-      overflow-y: visible;
+      flex: none;
     }
   }
 
@@ -456,6 +458,53 @@ export const PhoneIcon = () => (
     <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.66A2 2 0 012 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.97a16 16 0 006.06 6.06l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
   </svg>
 )
+
+// ─── Google OAuth handler (shared between Login and Signup) ──────────────────
+// Google OAuth users are pre-verified by Google — Firebase Auth sets
+// emailVerified = true automatically. We reflect that in Firestore too.
+export async function signInWithGoogle(): Promise<void> {
+  const result = await signInWithPopup(auth, googleProvider)
+  const user = result.user
+
+  const userRef = doc(db, 'users', user.uid)
+  const existing = await getDoc(userRef)
+
+  if (!existing.exists()) {
+    // New user — create Firestore records
+    const nameParts = (user.displayName ?? '').split(' ')
+    const firstName = nameParts[0] ?? ''
+    const lastName = nameParts.slice(1).join(' ') || ''
+
+    await setDoc(userRef, {
+      uid: user.uid,
+      firstName,
+      lastName,
+      email: user.email ?? '',
+      phone: user.phoneNumber ?? '',
+      role: 'buyer',
+      photoUrl: user.photoURL ?? '',
+      isEmailVerified: true,   // Google auth = always verified
+      isPhoneVerified: false,
+      accountStatus: 'active',
+      fcmToken: '',
+      createdAt: serverTimestamp(),
+      lastLoginAt: serverTimestamp(),
+    })
+
+    await setDoc(doc(db, 'buyers', user.uid), {
+      userId: user.uid,
+      walletBalance: 0,
+      loyaltyPoints: 0,
+      defaultAddressId: '',
+      totalOrders: 0,
+      isBlocked: false,
+      createdAt: serverTimestamp(),
+    })
+  } else {
+    // Returning user — just refresh lastLoginAt and sync verified status
+    await setDoc(userRef, { lastLoginAt: serverTimestamp(), isEmailVerified: true }, { merge: true })
+  }
+}
 
 // ─── Field Component ──────────────────────────────────────────────────────────
 export function Field({
