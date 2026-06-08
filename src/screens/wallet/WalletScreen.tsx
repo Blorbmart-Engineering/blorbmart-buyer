@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useFirebaseData'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
-import { CreditCardIcon, DocumentIcon, GiftIcon } from '../../components/icons'
+import { CreditCardIcon, DocumentIcon, GiftIcon, PrinterIcon } from '../../components/icons'
+import { printWalletReceipt } from '../../lib/receiptPrinter'
 
 // ─── API Service ────────────────────────────────────────────────────────────────
 const BASE = `${import.meta.env.VITE_API_BASE_URL ?? 'https://blorbmart.onrender.com'}/api/wallet`
@@ -435,13 +436,21 @@ export default function WalletScreen() {
                         <div className="wl-tx-desc">{tx.description || (isCredit ? 'Wallet funding' : 'Payment')}</div>
                         <div className="wl-tx-meta">{fmtDate(tx.timestamp)}{tx.paymentMethod ? ` · ${tx.paymentMethod}` : ''}</div>
                       </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                         <div className="wl-tx-amount" style={{ color: amtColor }}>
                           {isCredit ? '+' : '−'}{fmt(tx.amount)}
                         </div>
                         <div className="wl-tx-status" style={{ background: statusStyle.bg, color: statusStyle.color }}>
                           {tx.status.toUpperCase()}
                         </div>
+                        <button
+                          type="button"
+                          title="View Receipt"
+                          onClick={() => printWalletReceipt({ type: tx.type, amount: tx.amount, description: tx.description, status: tx.status, reference: tx.reference, paymentMethod: tx.paymentMethod, newBalance: tx.newBalance, timestamp: tx.timestamp })}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 2, display: 'flex', alignItems: 'center' }}
+                        >
+                          <PrinterIcon size={13} />
+                        </button>
                       </div>
                     </div>
                   )

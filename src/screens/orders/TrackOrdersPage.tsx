@@ -8,6 +8,7 @@ import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useFirebaseData'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
 import { ClockIcon, CreditCardIcon, MapPinIcon, PackageIcon, PrinterIcon, ReceiptIcon } from '../../components/icons'
+import { printOrderReceipt } from '../../lib/receiptPrinter'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type FsTs = { toDate?: () => Date; seconds?: number }
@@ -274,7 +275,19 @@ function OrderDetail({ order, onBack }: { order: Order; onBack?: () => void }) {
     load()
   }, [order.id, order.storeOrders])
 
-  const handlePrint = () => window.print()
+  const handlePrint = () => printOrderReceipt({
+    orderId: order.id,
+    items: storeOrders.flatMap(so => (so.items ?? []).map(it => ({ name: it.name, qty: it.quantity, price: it.price }))),
+    subtotal: order.subtotal,
+    deliveryFee: order.deliveryFee,
+    discount: order.discountAmount,
+    total: order.totalAmount,
+    paymentMethod: order.paymentMethod ? getPaymentLabel(order.paymentMethod) : undefined,
+    address: order.address ? [order.address.street, order.address.city, order.address.state].filter(Boolean).join(', ') : undefined,
+    status: order.orderStatus,
+    createdAt: order.createdAt?.toDate ? order.createdAt.toDate() : order.createdAt?.seconds ? new Date(order.createdAt.seconds * 1000) : undefined,
+    customerName: order.userName,
+  })
 
   const currentStatus = status?.status ?? order.orderStatus ?? 'pending'
   const sm = getStatusMeta(currentStatus)

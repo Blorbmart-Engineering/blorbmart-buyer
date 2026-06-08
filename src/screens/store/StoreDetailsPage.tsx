@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore'
+import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
+import { useAuth } from '../../hooks/useFirebaseData'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
-import { PackageIcon } from '../../components/icons'
+import { PackageIcon, CloseIcon, UserCircleIcon, MapPinIcon } from '../../components/icons'
 import { ProductCard } from '../../components/ProductCard'
 import { StarIcon, ClockIcon, TruckIcon } from '../../components/icons'
 
@@ -11,7 +12,26 @@ type Store = {
   id: string; storeName: string; logoUrl?: string; coverImageUrl?: string
   description?: string; rating?: number; totalRatings?: number
   deliveryTime?: number; deliveryFee?: number; category?: string
-  isActive?: boolean; phone?: string
+  isActive?: boolean; phone?: string; address?: string
+}
+
+type StoreReview = {
+  id?: string; userId: string; userName: string; userImageUrl?: string
+  rating: number; comment: string; createdAt?: Date
+}
+
+const formatReviewDate = (date?: Date) => {
+  if (!date) return ''
+  const diffMs = Date.now() - date.getTime()
+  const days = Math.floor(diffMs / 86400000)
+  if (days > 365) { const y = Math.floor(days / 365); return `${y} year${y > 1 ? 's' : ''} ago` }
+  if (days > 30) { const m = Math.floor(days / 30); return `${m} month${m > 1 ? 's' : ''} ago` }
+  if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`
+  const hours = Math.floor(diffMs / 3600000)
+  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`
+  const mins = Math.floor(diffMs / 60000)
+  if (mins > 0) return `${mins} minute${mins > 1 ? 's' : ''} ago`
+  return 'Just now'
 }
 
 type Product = {
@@ -42,10 +62,39 @@ const css = `
   .sd-chip.green { background: #d1fae5; color: #065f46; }
   .sd-chip.orange { background: #fff7ed; color: #c2410c; }
 
+  .sd-address-row { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-3); margin-top: 8px; }
+
   .sd-section-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 16px; }
   .sd-empty { background: #fff; border: 1.5px solid var(--border); border-radius: var(--radius-lg); padding: 60px 20px; text-align: center; }
   .sd-empty-icon { font-size: 48px; margin-bottom: 12px; }
   .sd-empty-text { font-size: 16px; font-weight: 700; color: var(--text-2); }
+
+  /* Reviews */
+  .sd-review-write-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border-radius: var(--radius); border: 1.5px solid var(--blue); background: var(--blue-light); color: var(--blue); font-weight: 700; font-size: 14px; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; margin-bottom: 14px; }
+  .sd-review-write-btn:hover { background: var(--blue); color: #fff; }
+  .sd-reviewed-badge { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-radius: var(--radius); background: #ECFDF5; color: #047857; font-size: 13px; font-weight: 600; margin-bottom: 14px; }
+  .sd-review-item { display: flex; gap: 12px; padding: 14px; background: #fff; border: 1.5px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; }
+  .sd-review-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--blue-light); color: var(--blue); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; flex-shrink: 0; overflow: hidden; }
+  .sd-review-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .sd-review-name { font-size: 13.5px; font-weight: 700; color: var(--text); }
+  .sd-review-meta-row { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px; }
+  .sd-review-date { font-size: 11.5px; color: var(--text-3); }
+  .sd-review-comment { font-size: 13px; color: var(--text-2); line-height: 1.6; }
+  .sd-review-empty { background: #fff; border: 1.5px solid var(--border); border-radius: var(--radius-lg); text-align: center; padding: 30px 16px; color: var(--text-3); }
+
+  /* Review modal */
+  .sd-modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.5); z-index: 200; display: flex; align-items: flex-end; justify-content: center; }
+  @media (min-width: 640px) { .sd-modal-backdrop { align-items: center; } }
+  .sd-modal { background: #fff; border-radius: 20px 20px 0 0; padding: 22px; width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; }
+  @media (min-width: 640px) { .sd-modal { border-radius: 20px; } }
+  .sd-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .sd-modal-title { font-size: 17px; font-weight: 800; font-family: 'Bricolage Grotesque', sans-serif; }
+  .sd-modal-close { width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--bg-2, #F1F5F9); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-3); }
+  .sd-star-picker { display: flex; gap: 6px; justify-content: center; margin-bottom: 16px; }
+  .sd-star-picker button { background: none; border: none; cursor: pointer; padding: 2px; }
+  .sd-modal textarea { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-size: 13.5px; font-family: 'Plus Jakarta Sans', sans-serif; resize: vertical; min-height: 90px; margin-bottom: 16px; color: var(--text); }
+  .sd-modal-submit { width: 100%; padding: 13px; border-radius: var(--radius); border: none; background: var(--blue); color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .sd-modal-submit:disabled { opacity: .6; cursor: not-allowed; }
 `
 
 const getInitials = (name: string) => name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -53,10 +102,19 @@ const getInitials = (name: string) => name.split(' ').map(w => w[0]).join('').sl
 export function StoreDetailsPage() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const { user } = useAuth()
 
   const [store, setStore] = useState<Store | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+
+  const [reviews, setReviews] = useState<StoreReview[]>([])
+  const [hasPurchased, setHasPurchased] = useState(false)
+  const [hasReviewed, setHasReviewed] = useState(false)
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [reviewStars, setReviewStars] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+  const [submittingReview, setSubmittingReview] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -73,12 +131,84 @@ export function StoreDetailsPage() {
         const q = query(collection(db, 'products'), where('vendorId', '==', id), limit(20))
         const prodSnap = await getDocs(q)
         setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() } as Product)))
+
+        // Fetch store reviews
+        try {
+          const reviewsSnap = await getDocs(query(collection(db, 'stores', id, 'reviews'), orderBy('createdAt', 'desc')))
+          setReviews(reviewsSnap.docs.map(d => {
+            const rd = d.data()
+            return {
+              id: d.id, userId: rd.userId ?? '', userName: rd.userName ?? 'Anonymous', userImageUrl: rd.userImageUrl ?? '',
+              rating: Number(rd.rating) || 0, comment: rd.comment ?? '',
+              createdAt: rd.createdAt?.toDate ? rd.createdAt.toDate() : undefined,
+            }
+          }))
+        } catch { /* no reviews */ }
       } finally {
         setLoading(false)
       }
     }
     load()
   }, [id])
+
+  // Check whether the user already reviewed this store, or has a delivered order from it
+  useEffect(() => {
+    const checkPurchaseAndReview = async () => {
+      if (!user || !id) return
+      try {
+        const existing = await getDocs(query(
+          collection(db, 'stores', id, 'reviews'),
+          where('userId', '==', user.uid),
+          limit(1)
+        ))
+        if (!existing.empty) { setHasReviewed(true); return }
+
+        const ordersSnap = await getDocs(query(
+          collection(db, 'orders'),
+          where('userId', '==', user.uid),
+          where('orderStatus', '==', 'delivered')
+        ))
+        for (const orderDoc of ordersSnap.docs) {
+          const storeOrdersSnap = await getDocs(query(
+            collection(db, 'orders', orderDoc.id, 'storeOrders'),
+            where('storeId', '==', id),
+            limit(1)
+          ))
+          if (!storeOrdersSnap.empty) { setHasPurchased(true); return }
+        }
+      } catch { /* ignore */ }
+    }
+    checkPurchaseAndReview()
+  }, [user, id])
+
+  const submitStoreReview = async () => {
+    if (!user || !id || submittingReview || !reviewComment.trim()) return
+    setSubmittingReview(true)
+    try {
+      const userSnap = await getDoc(doc(db, 'users', user.uid))
+      const ud = userSnap.exists() ? userSnap.data() : {}
+      const name = `${ud?.firstName ?? ''} ${ud?.lastName ?? ''}`.trim() || user.displayName || 'Verified Buyer'
+      const imageUrl = ud?.photoUrl ?? user.photoURL ?? ''
+
+      await addDoc(collection(db, 'stores', id, 'reviews'), {
+        userId: user.uid, userName: name, userImageUrl: imageUrl,
+        rating: reviewStars, comment: reviewComment.trim(), verified: true, createdAt: serverTimestamp(),
+      })
+
+      const allSnap = await getDocs(collection(db, 'stores', id, 'reviews'))
+      const avg = allSnap.docs.reduce((s, d) => s + (Number(d.data().rating) || 0), 0) / allSnap.docs.length
+      await updateDoc(doc(db, 'stores', id), { rating: Number(avg.toFixed(1)) })
+
+      setReviews(rs => [{ userId: user.uid, userName: name, userImageUrl: imageUrl, rating: reviewStars, comment: reviewComment.trim(), createdAt: new Date() }, ...rs])
+      setStore(s => s ? { ...s, rating: Number(avg.toFixed(1)) } : s)
+      setHasReviewed(true)
+      setReviewModalOpen(false)
+      setReviewComment('')
+      setReviewStars(5)
+    } catch { /* ignore */ } finally {
+      setSubmittingReview(false)
+    }
+  }
 
   return (
     <>
@@ -156,6 +286,12 @@ export function StoreDetailsPage() {
                       <span className="sd-chip">{store.category}</span>
                     )}
                   </div>
+                  {store?.address && (
+                    <div className="sd-address-row">
+                      <MapPinIcon size={13} />
+                      {store.address}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -175,10 +311,80 @@ export function StoreDetailsPage() {
                   ))}
                 </div>
               )}
+
+              {/* Store reviews */}
+              <div className="sd-section-title" style={{ marginTop: 32 }}>
+                Store Reviews ({reviews.length})
+              </div>
+
+              {hasPurchased && !hasReviewed && (
+                <button className="sd-review-write-btn" type="button" onClick={() => setReviewModalOpen(true)}>
+                  <StarIcon size={14} /> Write a Review
+                </button>
+              )}
+              {hasReviewed && (
+                <div className="sd-reviewed-badge">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg>
+                  You've reviewed this store
+                </div>
+              )}
+
+              {reviews.length === 0 ? (
+                <div className="sd-review-empty">
+                  <div style={{ fontWeight: 700, marginBottom: 4 }}>No reviews yet</div>
+                  <div style={{ fontSize: 12.5 }}>Be the first to review this store</div>
+                </div>
+              ) : (
+                reviews.map((r, i) => (
+                  <div className="sd-review-item" key={r.id ?? i}>
+                    <div className="sd-review-avatar">
+                      {r.userImageUrl ? <img src={r.userImageUrl} alt={r.userName} /> : (r.userName ? getInitials(r.userName) : <UserCircleIcon />)}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div className="sd-review-name">{r.userName}</div>
+                      <div className="sd-review-meta-row">
+                        <span style={{ display: 'flex', gap: 1 }}>
+                          {[...Array(5)].map((_, si) => (
+                            <span key={si} style={{ opacity: si < Math.round(r.rating) ? 1 : .25 }}><StarIcon size={11} /></span>
+                          ))}
+                        </span>
+                        <span className="sd-review-date">{formatReviewDate(r.createdAt)}</span>
+                      </div>
+                      <div className="sd-review-comment">{r.comment}</div>
+                    </div>
+                  </div>
+                ))
+              )}
             </>
           )}
         </div>
       </div>
+
+      {reviewModalOpen && (
+        <div className="sd-modal-backdrop" onClick={() => setReviewModalOpen(false)}>
+          <div className="sd-modal" onClick={e => e.stopPropagation()}>
+            <div className="sd-modal-head">
+              <span className="sd-modal-title">Write a Review</span>
+              <button className="sd-modal-close" type="button" onClick={() => setReviewModalOpen(false)}><CloseIcon /></button>
+            </div>
+            <div className="sd-star-picker">
+              {[1, 2, 3, 4, 5].map(n => (
+                <button key={n} type="button" onClick={() => setReviewStars(n)} style={{ opacity: n <= reviewStars ? 1 : .3 }}>
+                  <StarIcon size={28} />
+                </button>
+              ))}
+            </div>
+            <textarea
+              placeholder="Share your experience with this store..."
+              value={reviewComment}
+              onChange={e => setReviewComment(e.target.value)}
+            />
+            <button className="sd-modal-submit" type="button" disabled={submittingReview || !reviewComment.trim()} onClick={submitStoreReview}>
+              {submittingReview ? 'Submitting...' : 'Submit Review'}
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }

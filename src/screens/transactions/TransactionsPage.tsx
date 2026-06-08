@@ -4,7 +4,8 @@ import { collection, getDocs, orderBy, query, where } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useFirebaseData'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
-import { GiftIcon, ReceiptIcon } from '../../components/icons'
+import { GiftIcon, PrinterIcon, ReceiptIcon } from '../../components/icons'
+import { printWalletReceipt } from '../../lib/receiptPrinter'
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 type FsTs = { toDate?: () => Date; seconds?: number }
@@ -278,7 +279,7 @@ export function TransactionsPage() {
                         <div className="xt-tx-title">{tx.description || typeLabel(tx.type)}</div>
                         <div className="xt-tx-meta">{fmtDate(d)}</div>
                       </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                         <div className="xt-tx-amount" style={{ color: amtColor }}>
                           {credit ? '+' : '−'}{fmt(tx.amount)}
                         </div>
@@ -287,6 +288,14 @@ export function TransactionsPage() {
                             {tx.status.toUpperCase()}
                           </div>
                         )}
+                        <button
+                          type="button"
+                          title="View Receipt"
+                          onClick={() => printWalletReceipt({ type: tx.type ?? 'transaction', amount: tx.amount, description: tx.description ?? '', status: tx.status ?? 'completed', reference: tx.reference ?? '', timestamp: d ?? undefined })}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 2, display: 'flex', alignItems: 'center' }}
+                        >
+                          <PrinterIcon size={13} />
+                        </button>
                       </div>
                     </div>
                   )
