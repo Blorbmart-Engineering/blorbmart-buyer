@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useFirebaseData'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
+import { CreditCardIcon, DocumentIcon, GiftIcon } from '../../components/icons'
 
 // ─── API Service ────────────────────────────────────────────────────────────────
 const BASE = `${import.meta.env.VITE_API_BASE_URL ?? 'https://blorbmart.onrender.com'}/api/wallet`
@@ -185,7 +186,7 @@ function PaystackModal({
   return (
     <div className="wl-confirm">
       <div className="wl-confirm-box">
-        <div style={{ fontSize: 40, textAlign: 'center', marginBottom: 12 }}>💳</div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><CreditCardIcon size={40} /></div>
         <div className="wl-confirm-title" style={{ textAlign: 'center' }}>Complete Payment</div>
         <div className="wl-confirm-desc" style={{ textAlign: 'center' }}>
           A Paystack checkout page has been opened for <strong>{fmt(amount)}</strong>. Complete the payment there, then tap the button below.
@@ -330,7 +331,7 @@ export default function WalletScreen() {
                 }
                 <div className="wl-balance-sub">Available for shopping</div>
               </div>
-              <span style={{ fontSize: 32 }}>💳</span>
+              <span style={{ display: 'inline-flex' }}><CreditCardIcon size={32} /></span>
             </div>
           </div>
 
@@ -349,7 +350,7 @@ export default function WalletScreen() {
               style={{ background: '#0f172a', color: '#fff', opacity: .7, cursor: 'not-allowed' }}
               disabled
             >
-              🎁 Gift Cards <span style={{ fontSize: 10, opacity: .7 }}>Soon</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><GiftIcon size={16} /> Gift Cards</span> <span style={{ fontSize: 10, opacity: .7 }}>Soon</span>
             </button>
           </div>
 
@@ -367,7 +368,7 @@ export default function WalletScreen() {
                 <div className="wl-stat-lbl">Spent</div>
               </div>
               <div className="wl-stat">
-                <div className="wl-stat-icon">📄</div>
+                <div className="wl-stat-icon"><DocumentIcon /></div>
                 <div className="wl-stat-val">{txns.length}</div>
                 <div className="wl-stat-lbl">Transactions</div>
               </div>
@@ -412,7 +413,7 @@ export default function WalletScreen() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="wl-empty">
-              <div className="wl-empty-icon">📄</div>
+              <div className="wl-empty-icon"><DocumentIcon /></div>
               <div className="wl-empty-title">No transactions yet</div>
               <div className="wl-empty-sub">Add funds or make a purchase to see history here.</div>
             </div>
@@ -487,7 +488,7 @@ export default function WalletScreen() {
               </div>
 
               <div className="wl-paystack-chip">
-                <span style={{ fontSize: 22 }}>💳</span>
+                <span style={{ display: 'inline-flex' }}><CreditCardIcon size={22} /></span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--blue)' }}>Paystack</div>
                   <div style={{ fontSize: 12, color: 'var(--text-2)' }}>Secure payment gateway</div>

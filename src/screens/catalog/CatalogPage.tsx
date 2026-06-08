@@ -5,6 +5,7 @@ import { dashboardCss } from '../../components/dashboard/dashboardStyles'
 import { ProductCard } from '../../components/ProductCard'
 import {
   SearchIcon, FilterIcon, GridIcon, ListIcon, ChevronRightIcon, CloseIcon,
+  HomeIcon, HeartIcon, ReceiptIcon, UserIcon,
 } from '../../components/icons'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -378,7 +379,7 @@ export function CatalogPage() {
               <SkeletonGrid />
             ) : filtered.length === 0 ? (
               <div className="cat-empty">
-                <div className="cat-empty-icon">🔍</div>
+                <div className="cat-empty-icon"><SearchIcon /></div>
                 <div className="cat-empty-title">No products found</div>
                 <div className="cat-empty-sub">
                   Try adjusting your filters or search for something else
@@ -432,13 +433,13 @@ export function CatalogPage() {
         <nav className="cat-bottom-nav">
           <div className="cat-bottom-nav-inner">
             {[
-              { label: 'Home', path: '/dashboard', icon: '🏠' },
-              { label: 'Wishlist', path: '/wishlist', icon: '♡' },
-              { label: 'Orders', path: '/track', icon: '📋' },
-              { label: 'Account', path: '/profile', icon: '👤' },
-            ].map(({ label, path, icon }) => (
+              { label: 'Home', path: '/dashboard', icon: HomeIcon },
+              { label: 'Wishlist', path: '/wishlist', icon: HeartIcon },
+              { label: 'Orders', path: '/track', icon: ReceiptIcon },
+              { label: 'Account', path: '/profile', icon: UserIcon },
+            ].map(({ label, path, icon: Icon }) => (
               <button key={label} className="cat-bottom-item" type="button" onClick={() => navigate(path)}>
-                <span style={{ fontSize: 18 }}>{icon}</span>
+                <span style={{ fontSize: 18 }}><Icon filled={false} /></span>
                 {label}
               </button>
             ))}

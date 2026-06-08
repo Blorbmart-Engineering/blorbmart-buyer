@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
+import {
+  StoreIcon, SmartphoneIcon, UsersIcon, CashIcon, TruckIcon, PackageIcon,
+  CreditCardIcon, BagIcon, MessageIcon, type IconType,
+} from '../../components/icons'
 
 // ─── Data ────────────────────────────────────────────────────────────────────────
 type FaqItem = {
   question: string
   answer: string
-  icon: string
+  icon: IconType
   tag: 'General' | 'Students' | 'Sellers' | 'Riders'
   tagColor: string
 }
@@ -15,56 +19,56 @@ const FAQS: FaqItem[] = [
   {
     question: 'What is Blorbmart?',
     answer: 'Blorbmart is a campus marketplace where students can buy and sell items, order from student sellers, and arrange deliveries inside their university.',
-    icon: '🏪',
+    icon: StoreIcon,
     tag: 'General',
     tagColor: '#1f77f1',
   },
   {
     question: 'How does Blorbmart work?',
     answer: 'Students sign up, browse campus listings or post products, place orders, and track delivery or pickup directly from the platform.',
-    icon: '📱',
+    icon: SmartphoneIcon,
     tag: 'General',
     tagColor: '#1f77f1',
   },
   {
     question: 'Who can sell on Blorbmart?',
     answer: 'Students, campus creators, and university-based small businesses can open a seller account and reach buyers within their campus community.',
-    icon: '👥',
+    icon: UsersIcon,
     tag: 'Sellers',
     tagColor: '#5156f1',
   },
   {
     question: 'Is Blorbmart free for students?',
     answer: 'Yes. Students can join, browse listings, and use the marketplace without paying to create an account.',
-    icon: '💸',
+    icon: CashIcon,
     tag: 'Students',
     tagColor: '#1baa6e',
   },
   {
     question: 'Can riders earn money on Blorbmart?',
     answer: 'Yes. Campus riders can accept delivery requests, work around their class schedule, and earn from short on-campus trips.',
-    icon: '🛵',
+    icon: TruckIcon,
     tag: 'Riders',
     tagColor: '#ff5500',
   },
   {
     question: 'How do I track my order?',
     answer: 'After placing an order, go to "Track Orders" from your profile or the bottom navigation. You\'ll see real-time status updates from Pending through to Delivered.',
-    icon: '📦',
+    icon: PackageIcon,
     tag: 'Students',
     tagColor: '#1baa6e',
   },
   {
     question: 'How does the wallet work?',
     answer: 'Your Blorbmart wallet lets you fund your account via card (powered by Paystack) and use your balance to pay for orders instantly at checkout.',
-    icon: '💳',
+    icon: CreditCardIcon,
     tag: 'Students',
     tagColor: '#1baa6e',
   },
   {
     question: 'How do I become a seller?',
     answer: 'Download the Blorbmart Vendor app or visit the vendor portal. Create a store, list your products, and start receiving orders from buyers on campus.',
-    icon: '🏬',
+    icon: BagIcon,
     tag: 'Sellers',
     tagColor: '#5156f1',
   },
@@ -196,7 +200,7 @@ export function FaqPage() {
                     className="fq-card-icon"
                     style={{ background: open ? 'rgba(31,119,241,.12)' : faq.tagColor + '1a' }}
                   >
-                    {faq.icon}
+                    <faq.icon />
                   </div>
                   <div className="fq-card-meta">
                     <span className="fq-tag" style={{ background: faq.tagColor + '1a', color: faq.tagColor }}>
@@ -222,7 +226,7 @@ export function FaqPage() {
 
         {/* Contact card */}
         <div className="fq-contact">
-          <div className="fq-contact-icon">💬</div>
+          <div className="fq-contact-icon"><MessageIcon /></div>
           <div>
             <div className="fq-contact-title">Still have questions?</div>
             <div className="fq-contact-email">Contact us at support@blorbmart.com.ng</div>

@@ -1,12 +1,22 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { CartIcon, ZapIcon, type IconType } from '../../components/icons'
+
+// Simple graduation cap outline icon (concept not in shared set)
+const GraduationCapIcon = ({ size = 28 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 10L12 5 2 10l10 5 10-5z"/>
+    <path d="M6 12v5c0 1.5 2.5 3 6 3s6-1.5 6-3v-5"/>
+    <path d="M2 10v6"/>
+  </svg>
+)
 
 // ─── Slide data ───────────────────────────────────────────────────────────────
 type Slide = {
   title: string
   subtitle: string
   gradient: [string, string]
-  emoji: string
+  icon: IconType
 }
 
 const SLIDES: Slide[] = [
@@ -14,19 +24,19 @@ const SLIDES: Slide[] = [
     title: 'Where Student\nBudget Wins',
     subtitle: 'Unlock exclusive deals and discounts tailored for students. Save more on everything you need.',
     gradient: ['#6b46c1', '#9333ea'],
-    emoji: '🎓',
+    icon: GraduationCapIcon,
   },
   {
     title: 'Built for Students,\nPriced for Survival',
     subtitle: 'We understand student life. Get premium quality without the premium price tag.',
     gradient: ['#2563eb', '#3b82f6'],
-    emoji: '🛒',
+    icon: CartIcon,
   },
   {
     title: 'Study Hard.\nShop Smart',
     subtitle: 'Balance your academic goals with smart shopping. More savings, less stress.',
     gradient: ['#ea580c', '#f59e0b'],
-    emoji: '⚡',
+    icon: ZapIcon,
   },
 ]
 
@@ -179,7 +189,7 @@ export function OnboardingScreen() {
                 style={{ background: `linear-gradient(135deg, ${slide.gradient[0]} 0%, ${slide.gradient[1]} 100%)` }}
               />
               <div className="ob-overlay" />
-              <div className="ob-emoji-wrap">{slide.emoji}</div>
+              <div className="ob-emoji-wrap"><slide.icon /></div>
             </div>
           ))}
         </div>

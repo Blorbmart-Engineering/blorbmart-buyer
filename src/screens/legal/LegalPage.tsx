@@ -1,5 +1,6 @@
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
+import { LockIcon, DocumentIcon } from '../../components/icons'
 
 // ─── Content ─────────────────────────────────────────────────────────────────────
 const TERMS_SECTIONS = [
@@ -125,7 +126,7 @@ export function LegalPage() {
   const isPrivacy = location.pathname === '/privacy'
   const sections  = isPrivacy ? PRIVACY_SECTIONS : TERMS_SECTIONS
   const title     = isPrivacy ? 'Privacy Policy' : 'Terms of Service'
-  const icon      = isPrivacy ? '🔒' : '📄'
+  const Icon      = isPrivacy ? LockIcon : DocumentIcon
   const lastUpdate = isPrivacy ? 'Last updated: January 2025' : 'Last updated: January 2025'
 
   const switchTo = (path: string) => navigate(path, { replace: true })
@@ -167,7 +168,7 @@ export function LegalPage() {
 
           {/* Intro card */}
           <div className="lg-intro">
-            <div className="lg-intro-icon">{icon}</div>
+            <div className="lg-intro-icon"><Icon /></div>
             <div>
               <div className="lg-intro-title">{title}</div>
               <div className="lg-intro-date">{lastUpdate}</div>

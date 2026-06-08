@@ -6,6 +6,9 @@ import {
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useFirebaseData'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
+import {
+  PackageIcon, CashIcon, TruckIcon, TagIcon, StarIcon, BellIcon, type IconType,
+} from '../../components/icons'
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 type FsTs = { toDate?: () => Date; seconds?: number }
@@ -39,16 +42,16 @@ const fmtRelative = (d: Date): string => {
   return d.toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })
 }
 
-const TYPE_META: Record<string, { icon: string; color: string }> = {
-  order:    { icon: '📦', color: '#5156f1' },
-  wallet:   { icon: '💰', color: '#00b894' },
-  delivery: { icon: '🚚', color: '#1f77f1' },
-  promo:    { icon: '🏷️', color: '#ff5500' },
-  review:   { icon: '⭐', color: '#ffc200' },
+const TYPE_META: Record<string, { icon: IconType; color: string }> = {
+  order:    { icon: PackageIcon, color: '#5156f1' },
+  wallet:   { icon: CashIcon, color: '#00b894' },
+  delivery: { icon: TruckIcon, color: '#1f77f1' },
+  promo:    { icon: TagIcon, color: '#ff5500' },
+  review:   { icon: StarIcon, color: '#ffc200' },
 }
 
 const getMeta = (type?: string) =>
-  TYPE_META[(type ?? '').toLowerCase()] ?? { icon: '🔔', color: '#94a3b8' }
+  TYPE_META[(type ?? '').toLowerCase()] ?? { icon: BellIcon, color: '#94a3b8' }
 
 // ─── CSS ────────────────────────────────────────────────────────────────────────
 const css = `
@@ -210,7 +213,7 @@ export function NotificationsPage() {
             ))
           ) : items.length === 0 ? (
             <div className="nt-empty">
-              <div className="nt-empty-bubble">🔔</div>
+              <div className="nt-empty-bubble"><BellIcon /></div>
               <div className="nt-empty-title">No Notifications Yet</div>
               <div className="nt-empty-sub">
                 You're all caught up! Notifications about your orders, wallet, and deals will appear here.
@@ -218,7 +221,7 @@ export function NotificationsPage() {
             </div>
           ) : (
             items.map(n => {
-              const { icon, color } = getMeta(n.type)
+              const { icon: Icon, color } = getMeta(n.type)
               const isUnread = !n.read
               const d = toDate(n.createdAt)
               const tag = n.type && n.type !== 'general'
@@ -226,7 +229,7 @@ export function NotificationsPage() {
                 : null
               return (
                 <div key={n.id} className={`nt-item${isUnread ? ' unread' : ''}`}>
-                  <div className="nt-icon" style={{ background: color + '1a' }}>{icon}</div>
+                  <div className="nt-icon" style={{ background: color + '1a', color }}><Icon /></div>
                   <div className="nt-content">
                     <div className="nt-title-row">
                       <div className={`nt-title${isUnread ? ' unread' : ''}`}>

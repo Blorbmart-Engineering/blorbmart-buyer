@@ -4,6 +4,7 @@ import { useCart } from '../../contexts/CartContext'
 import { useAuth } from '../../hooks/useFirebaseData'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
 import { apiFetchAuth } from '../../lib/api'
+import { SparkleIcon, LockIcon, CartIcon } from '../../components/icons'
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(v)
@@ -165,8 +166,8 @@ export function CartPage() {
       <div className="cart-summary-title">Order Summary</div>
 
       {promoDiscount > 0 && (
-        <div className="cart-savings">
-          🎉 You're saving {fmt(promoDiscount)}!
+        <div className="cart-savings" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <SparkleIcon /> You're saving {fmt(promoDiscount)}!
         </div>
       )}
 
@@ -220,8 +221,8 @@ export function CartPage() {
       <button className="cart-cta" type="button" onClick={() => navigate('/checkout')}>
         Proceed to Checkout →
       </button>
-      <div className="cart-secure">
-        🔒 Secure checkout · All payments encrypted
+      <div className="cart-secure" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <LockIcon size={14} /> Secure checkout · All payments encrypted
       </div>
     </>
   )
@@ -251,7 +252,7 @@ export function CartPage() {
         {items.length === 0 ? (
           <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 16px' }}>
             <div className="cart-empty">
-              <div className="cart-empty-icon">🛒</div>
+              <div className="cart-empty-icon"><CartIcon /></div>
               <div className="cart-empty-title">Your cart is empty</div>
               <div className="cart-empty-sub">
                 Looks like you haven't added anything yet.<br />

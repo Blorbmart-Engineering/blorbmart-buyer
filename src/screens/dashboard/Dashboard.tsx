@@ -269,7 +269,7 @@ export default function Dashboard() {
           </div>
           <div className="bm-footer-bottom">
             <span>© 2025 Blorbmart. Built for campus life.</span>
-            <span>Made with ❤️ in Nigeria</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Made with <HeartIcon filled /> in Nigeria</span>
           </div>
         </footer>
 

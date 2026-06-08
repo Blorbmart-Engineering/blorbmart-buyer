@@ -5,7 +5,7 @@ import { db } from '../../lib/firebase'
 import { useCart } from '../../contexts/CartContext'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
 import { ProductCard } from '../../components/ProductCard'
-import { StarIcon, HeartIcon, ChevronRightIcon, CartIcon } from '../../components/icons'
+import { StarIcon, HeartIcon, ChevronRightIcon, CartIcon, FaceFrownIcon } from '../../components/icons'
 
 type Product = {
   id: string; name: string; description?: string
@@ -225,7 +225,7 @@ export function ProductDetailsPage() {
           </>
         ) : !product ? (
           <div style={{ padding: '80px 20px', textAlign: 'center', color: 'var(--text-3)' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>😕</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><FaceFrownIcon size={48} /></div>
             <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Product not found</div>
             <button style={{ padding: '10px 20px', background: 'var(--blue)', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 700 }} onClick={() => navigate('/shop')}>
               Browse Shop

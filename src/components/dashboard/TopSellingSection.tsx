@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { StarIcon, ChevronRightIcon } from '../icons'
+import { StarIcon, ChevronRightIcon, TrophyIcon } from '../icons'
 
 type Product = {
   id: string; name: string; price: number; discountPrice?: number
@@ -53,7 +53,7 @@ export function TopSellingSection({
           {products.map((item, i) => (
             <div key={item.id} className="bm-top-card" onClick={() => navigate(`/product/${item.id}`)}>
               <div className={`bm-top-rank ${i < 3 ? 'top' : ''}`}>
-                {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+                {i < 3 ? <TrophyIcon size={14} /> : `#${i + 1}`}
               </div>
               <div className="bm-top-img">
                 <img src={item.images?.[0] ?? '/second.jpg'} alt={item.name} loading="lazy" />

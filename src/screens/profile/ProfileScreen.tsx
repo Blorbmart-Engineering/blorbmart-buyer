@@ -6,6 +6,10 @@ import { useAuth } from '../../hooks/useFirebaseData'
 import { useUserData } from '../../hooks/useFirebaseData'
 import { apiFetchAuth } from '../../lib/api'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
+import {
+  UserIcon, LockIcon, TrashIcon, MapPinIcon, PackageIcon, MessageIcon, DocumentIcon,
+  CreditCardIcon, BagIcon, StarIcon, SunIcon, SmartphoneIcon, MoonIcon, LogoutIcon,
+} from '../../components/icons'
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 type BuyerData = {
@@ -169,7 +173,7 @@ function EditProfileModal({
         <div className="pr-modal-handle" />
         <div className="pr-modal-body">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>👤</div>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}><UserIcon /></div>
             <div className="pr-modal-title" style={{ margin: 0 }}>Edit Profile</div>
           </div>
           <div className="pr-field">
@@ -198,9 +202,9 @@ function EditProfileModal({
 function LegalModal({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
   const items = [
-    { icon: '📄', label: 'Terms of Service', path: '/terms' },
-    { icon: '🔒', label: 'Privacy Policy', path: '/privacy' },
-    { icon: '🗑', label: 'Account Deletion', href: 'https://www.blorbmart.com.ng/account-deletion', danger: true },
+    { icon: DocumentIcon, label: 'Terms of Service', path: '/terms' },
+    { icon: LockIcon, label: 'Privacy Policy', path: '/privacy' },
+    { icon: TrashIcon, label: 'Account Deletion', href: 'https://www.blorbmart.com.ng/account-deletion', danger: true },
   ]
   return (
     <div className="pr-modal-bg" onClick={onClose}>
@@ -219,7 +223,7 @@ function LegalModal({ onClose }: { onClose: () => void }) {
                 else { navigate(item.path!) }
               }}
             >
-              <div className="pr-setting-icon" style={{ background: item.danger ? '#fee2e2' : 'var(--bg)', fontSize: 18 }}>{item.icon}</div>
+              <div className="pr-setting-icon" style={{ background: item.danger ? '#fee2e2' : 'var(--bg)', fontSize: 18 }}><item.icon /></div>
               <div className="pr-setting-text">
                 <div className="pr-setting-title" style={{ color: item.danger ? '#dc2626' : undefined }}>{item.label}</div>
               </div>
@@ -330,12 +334,12 @@ export default function ProfileScreen() {
   const loyaltyPoints = buyerData?.loyaltyPoints ?? 0
 
   const settingsItems = [
-    { icon: '👤', bg: 'var(--blue-light)', title: 'Edit Profile', sub: 'Update your personal information', action: () => setShowEdit(true) },
-    { icon: '📍', bg: '#dbeafe', title: 'Addresses', sub: 'Manage delivery addresses', action: () => navigate('/checkout') },
-    { icon: '📦', bg: '#fff7ed', title: 'Track Orders', sub: 'View and track your orders', action: () => navigate('/track') },
-    { icon: '💬', bg: '#fef3c7', title: 'Help & Support', sub: 'FAQs and contact support', action: () => navigate('/faq') },
-    { icon: '📄', bg: '#d1fae5', title: 'Legal', sub: 'Terms, policies & agreements', action: () => setShowLegal(true) },
-    { icon: 'ℹ️', bg: 'var(--bg)', title: 'About Blorbmart', sub: 'Version 1.0.0 · Built for campus life', action: () => {} },
+    { icon: UserIcon, bg: 'var(--blue-light)', title: 'Edit Profile', sub: 'Update your personal information', action: () => setShowEdit(true) },
+    { icon: MapPinIcon, bg: '#dbeafe', title: 'Addresses', sub: 'Manage delivery addresses', action: () => navigate('/checkout') },
+    { icon: PackageIcon, bg: '#fff7ed', title: 'Track Orders', sub: 'View and track your orders', action: () => navigate('/track') },
+    { icon: MessageIcon, bg: '#fef3c7', title: 'Help & Support', sub: 'FAQs and contact support', action: () => navigate('/faq') },
+    { icon: DocumentIcon, bg: '#d1fae5', title: 'Legal', sub: 'Terms, policies & agreements', action: () => setShowLegal(true) },
+    { icon: DocumentIcon, bg: 'var(--bg)', title: 'About Blorbmart', sub: 'Version 1.0.0 · Built for campus life', action: () => {} },
   ]
 
   return (
@@ -381,7 +385,7 @@ export default function ProfileScreen() {
 
           {/* Wallet card */}
           <div className="pr-wallet" onClick={() => navigate('/wallet')}>
-            <div className="pr-wallet-icon">💳</div>
+            <div className="pr-wallet-icon"><CreditCardIcon /></div>
             <div style={{ flex: 1 }}>
               <div className="pr-wallet-label">Wallet Balance</div>
               {loading ? (
@@ -396,7 +400,7 @@ export default function ProfileScreen() {
           {/* Stats row */}
           <div className="pr-stats" style={{ marginBottom: 28 }}>
             <div className="pr-stat">
-              <div className="pr-stat-icon" style={{ background: 'var(--blue-light)' }}>🛍️</div>
+              <div className="pr-stat-icon" style={{ background: 'var(--blue-light)' }}><BagIcon /></div>
               {loading
                 ? <div className="bm-skeleton" style={{ height: 24, width: 40, borderRadius: 8, margin: '0 auto' }} />
                 : <div className="pr-stat-val">{totalOrders}</div>
@@ -404,7 +408,7 @@ export default function ProfileScreen() {
               <div className="pr-stat-lbl">Orders</div>
             </div>
             <div className="pr-stat">
-              <div className="pr-stat-icon" style={{ background: '#fef3c7' }}>⭐</div>
+              <div className="pr-stat-icon" style={{ background: '#fef3c7' }}><StarIcon size={18} /></div>
               {loading
                 ? <div className="bm-skeleton" style={{ height: 24, width: 40, borderRadius: 8, margin: '0 auto' }} />
                 : <div className="pr-stat-val">{loyaltyPoints}</div>
@@ -442,17 +446,17 @@ export default function ProfileScreen() {
             <div className="pr-section-title">Appearance</div>
             <div className="pr-theme-wrap">
               {([
-                { mode: 'light' as ThemeMode, icon: '☀️', label: 'Light' },
-                { mode: 'system' as ThemeMode, icon: '📱', label: 'System' },
-                { mode: 'dark' as ThemeMode, icon: '🌙', label: 'Dark' },
-              ]).map(({ mode, icon, label }) => (
+                { mode: 'light' as ThemeMode, icon: SunIcon, label: 'Light' },
+                { mode: 'system' as ThemeMode, icon: SmartphoneIcon, label: 'System' },
+                { mode: 'dark' as ThemeMode, icon: MoonIcon, label: 'Dark' },
+              ]).map(({ mode, icon: Icon, label }) => (
                 <button
                   key={mode}
                   type="button"
                   className={`pr-theme-opt${themeMode === mode ? ' active' : ''}`}
                   onClick={() => handleTheme(mode)}
                 >
-                  <span style={{ fontSize: 16 }}>{icon}</span>
+                  <span style={{ fontSize: 16 }}><Icon /></span>
                   <span>{label}</span>
                 </button>
               ))}
@@ -464,7 +468,7 @@ export default function ProfileScreen() {
             <div className="pr-section-title">Settings</div>
             {settingsItems.map(item => (
               <div key={item.title} className="pr-setting-item" onClick={item.action}>
-                <div className="pr-setting-icon" style={{ background: item.bg }}>{item.icon}</div>
+                <div className="pr-setting-icon" style={{ background: item.bg }}><item.icon /></div>
                 <div className="pr-setting-text">
                   <div className="pr-setting-title">{item.title}</div>
                   <div className="pr-setting-sub">{item.sub}</div>
@@ -476,7 +480,7 @@ export default function ProfileScreen() {
 
           {/* Logout */}
           <button className="pr-logout" type="button" onClick={() => setShowLogoutConfirm(true)}>
-            🚪 Logout
+            <LogoutIcon size={16} /> Logout
           </button>
 
         </div>

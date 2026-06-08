@@ -8,6 +8,7 @@ import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useFirebaseData'
 import { useCart } from '../../contexts/CartContext'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
+import { PackageIcon, HeartIcon, TrashIcon, CartIcon, ListIcon } from '../../components/icons'
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 type WishItem = {
@@ -415,14 +416,14 @@ export function WishlistPage() {
       >
         {img
           ? <img className="wi-card-img" src={img} alt={item.name} loading="lazy" />
-          : <div className="wi-card-img-ph">📦</div>
+          : <div className="wi-card-img-ph"><PackageIcon /></div>
         }
         {item.isOnSale && item.discountPct > 0 && (
           <div className="wi-sale-badge">-{item.discountPct}%</div>
         )}
         {/* Remove heart */}
         {!selectMode && (
-          <button className="wi-remove" onClick={e => { e.stopPropagation(); removeItem(item.productId) }}>❤️</button>
+          <button className="wi-remove" onClick={e => { e.stopPropagation(); removeItem(item.productId) }}><HeartIcon filled /></button>
         )}
         {/* Checkbox */}
         {selectMode && (
@@ -471,7 +472,7 @@ export function WishlistPage() {
       >
         {img
           ? <img className="wi-list-img" src={img} alt={item.name} loading="lazy" />
-          : <div className="wi-list-img-ph">📦</div>
+          : <div className="wi-list-img-ph"><PackageIcon /></div>
         }
         {item.isOnSale && item.discountPct > 0 && (
           <div style={{ position: 'absolute', top: 6, left: 6, background: '#ff5500', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 6 }}>-{item.discountPct}%</div>
@@ -489,7 +490,7 @@ export function WishlistPage() {
             </div>
             {!selectMode && (
               <>
-                <button className="wi-list-remove" onClick={e => { e.stopPropagation(); removeItem(item.productId) }}>❤️</button>
+                <button className="wi-list-remove" onClick={e => { e.stopPropagation(); removeItem(item.productId) }}><HeartIcon filled /></button>
                 <button
                   className="wi-add-cart"
                   style={{ width: 'auto', padding: '0 14px', height: 34 }}
@@ -529,8 +530,8 @@ export function WishlistPage() {
             <span className="wi-sel-title">{selected.size} selected</span>
             {selected.size > 0 && (
               <>
-                <button className="wi-sel-btn" onClick={removeSelected} title="Remove selected">🗑</button>
-                <button className="wi-sel-btn" onClick={addSelectedToCart} title="Add to cart">🛒</button>
+                <button className="wi-sel-btn" onClick={removeSelected} title="Remove selected"><TrashIcon size={16} /></button>
+                <button className="wi-sel-btn" onClick={addSelectedToCart} title="Add to cart"><CartIcon /></button>
               </>
             )}
           </header>
@@ -543,7 +544,7 @@ export function WishlistPage() {
             </button>
             <span className="wi-title">My Wishlist</span>
             <button className={`wi-hbtn${isGrid ? ' active' : ''}`} onClick={() => setIsGrid(true)} title="Grid view">⊞</button>
-            <button className={`wi-hbtn${!isGrid ? ' active' : ''}`} onClick={() => setIsGrid(false)} title="List view">☰</button>
+            <button className={`wi-hbtn${!isGrid ? ' active' : ''}`} onClick={() => setIsGrid(false)} title="List view"><ListIcon /></button>
             <button className={`wi-hbtn${activeFilterCount > 0 ? ' active' : ''}`} onClick={() => setShowFilter(true)} title="Sort & Filter">
               {activeFilterCount > 0 ? `⊿${activeFilterCount}` : '⊿'}
             </button>
@@ -559,7 +560,7 @@ export function WishlistPage() {
             </div>
           ) : items.length === 0 ? (
             <div className="wi-empty">
-              <div className="wi-empty-blob">♡</div>
+              <div className="wi-empty-blob"><HeartIcon filled={false} /></div>
               <div className="wi-empty-title">Your Wishlist is Empty</div>
               <p className="wi-empty-sub">Save products you love to your wishlist. Review them anytime and easily move them to cart.</p>
               <button className="wi-empty-cta" onClick={() => navigate('/shop')}>Start Shopping</button>

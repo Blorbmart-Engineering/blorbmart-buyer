@@ -4,6 +4,7 @@ import { collection, getDocs, orderBy, query, where } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useFirebaseData'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
+import { GiftIcon, ReceiptIcon } from '../../components/icons'
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 type FsTs = { toDate?: () => Date; seconds?: number }
@@ -67,9 +68,9 @@ const typeLabel = (type?: string) => {
 
 const typeIcon = (type?: string) => {
   const t = (type ?? '').toLowerCase()
+  if (['referral'].includes(t)) return <GiftIcon size={16} />
   if (['credit', 'wallet', 'deposit'].includes(t)) return '↓'
   if (['refund', 'cashback'].includes(t)) return '↺'
-  if (['referral'].includes(t)) return '🎁'
   return '↑'
 }
 
@@ -240,7 +241,7 @@ export function TransactionsPage() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="xt-empty">
-              <div className="xt-empty-icon">📋</div>
+              <div className="xt-empty-icon"><ReceiptIcon filled={false} /></div>
               <div className="xt-empty-title">No transactions</div>
               <div className="xt-empty-sub">
                 {activeFilter === 'all'

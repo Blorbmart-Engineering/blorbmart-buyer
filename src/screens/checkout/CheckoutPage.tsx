@@ -10,6 +10,10 @@ import {
   verifyPaystackCheckout, type CheckoutPricing,
 } from '../../services/checkoutService'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
+import {
+  HomeIcon, BuildingIcon, BriefcaseIcon, MapPinIcon, CreditCardIcon, CartIcon,
+  PhoneIcon, EditIcon, CashIcon, WalletIcon, ReceiptIcon, LockIcon,
+} from '../../components/icons'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Address = {
@@ -180,7 +184,7 @@ function AddAddressModal({
           <div className="co-label-chips">
             {ADDRESS_LABELS.map(l => (
               <div key={l} className={`co-label-chip ${label === l ? 'active' : ''}`} onClick={() => setLabel(l)}>
-                {l === 'Home' ? '🏠' : l === 'Hostel' ? '🏫' : l === 'Office' ? '💼' : '📍'} {l}
+                {l === 'Home' ? <HomeIcon filled={false} /> : l === 'Hostel' ? <BuildingIcon size={16} /> : l === 'Office' ? <BriefcaseIcon size={16} /> : <MapPinIcon size={16} />} {l}
               </div>
             ))}
           </div>
@@ -234,7 +238,7 @@ function PaystackModal({
   return (
     <div className="co-modal-overlay">
       <div className="co-paystack-modal">
-        <div className="co-paystack-icon">💳</div>
+        <div className="co-paystack-icon"><CreditCardIcon /></div>
         <div className="co-paystack-title">Complete Payment</div>
         <div className="co-paystack-sub">
           A Paystack payment page has opened in a new tab.<br />
@@ -437,7 +441,7 @@ export function CheckoutPage() {
         <style>{css}</style>
         <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg)', padding: 24 }}>
           <div style={{ background: '#fff', borderRadius: 24, padding: 40, border: '1.5px solid var(--border)', textAlign: 'center', maxWidth: 420 }}>
-            <div style={{ fontSize: 52, marginBottom: 16 }}>🛒</div>
+            <div style={{ fontSize: 52, marginBottom: 16, display: 'flex', justifyContent: 'center' }}><CartIcon /></div>
             <h2 style={{ margin: '0 0 8px', fontFamily: 'Bricolage Grotesque, sans-serif' }}>Nothing to check out</h2>
             <p style={{ color: 'var(--text-3)', marginBottom: 24, fontSize: 14 }}>Add products to your cart before continuing.</p>
             <button
@@ -489,7 +493,7 @@ export function CheckoutPage() {
             {/* Delivery address */}
             <div className="co-card">
               <div className="co-card-title">
-                <div className="co-card-icon">📍</div>
+                <div className="co-card-icon"><MapPinIcon size={16} /></div>
                 Delivery Address
               </div>
 
@@ -513,7 +517,7 @@ export function CheckoutPage() {
                           <div className="co-addr-line2">
                             {[addr.addressLine2, addr.city, addr.state].filter(Boolean).join(', ')}
                           </div>
-                          <div className="co-addr-line2" style={{ marginTop: 2 }}>📞 {addr.phone}</div>
+                          <div className="co-addr-line2" style={{ marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}><PhoneIcon size={13} /> {addr.phone}</div>
                         </div>
                         <button
                           type="button"
@@ -545,7 +549,7 @@ export function CheckoutPage() {
             {/* Delivery note */}
             <div className="co-card">
               <div className="co-card-title">
-                <div className="co-card-icon">📝</div>
+                <div className="co-card-icon"><EditIcon size={16} /></div>
                 Delivery Note
               </div>
               <textarea
@@ -561,27 +565,27 @@ export function CheckoutPage() {
             {/* Payment method */}
             <div className="co-card">
               <div className="co-card-title">
-                <div className="co-card-icon">💳</div>
+                <div className="co-card-icon"><CreditCardIcon size={16} /></div>
                 Payment Method
               </div>
               <div className="co-pay-list">
                 {([
                   {
                     key: 'cash_on_delivery' as PayMethod,
-                    icon: '💵', iconClass: 'cod',
+                    icon: CashIcon, iconClass: 'cod',
                     title: 'Cash on Delivery',
                     sub: 'Pay when your order arrives',
                   },
                   {
                     key: 'wallet' as PayMethod,
-                    icon: '👛', iconClass: 'wallet',
+                    icon: WalletIcon, iconClass: 'wallet',
                     title: 'Wallet',
                     sub: `Balance: ${fmt(walletBalance)}`,
                     badge: walletSufficient ? { label: 'Sufficient', cls: 'ok' } : { label: 'Low balance', cls: 'warn' },
                   },
                   {
                     key: 'paystack' as PayMethod,
-                    icon: '💳', iconClass: 'card',
+                    icon: CreditCardIcon, iconClass: 'card',
                     title: 'Pay with Paystack',
                     sub: 'Card, bank transfer, USSD',
                   },
@@ -591,7 +595,7 @@ export function CheckoutPage() {
                     className={`co-pay-card ${paymentMethod === opt.key ? 'selected' : ''}`}
                     onClick={() => setPaymentMethod(opt.key)}
                   >
-                    <div className={`co-pay-icon ${opt.iconClass}`}>{opt.icon}</div>
+                    <div className={`co-pay-icon ${opt.iconClass}`}><opt.icon /></div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="co-pay-title">{opt.title}</div>
                       <div className="co-pay-sub">{opt.sub}</div>
@@ -632,7 +636,7 @@ export function CheckoutPage() {
           {/* Right: order summary */}
           <aside className="co-card" style={{ position: 'sticky', top: 72 }}>
             <div className="co-card-title" style={{ marginBottom: 12 }}>
-              <div className="co-card-icon">🧾</div>
+              <div className="co-card-icon"><ReceiptIcon filled={false} /></div>
               Order Summary
             </div>
 
@@ -706,7 +710,7 @@ export function CheckoutPage() {
             >
               {ctaLabel}
             </button>
-            <div className="co-secure">🔒 Your payment info is encrypted</div>
+            <div className="co-secure" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><LockIcon size={14} /> Your payment info is encrypted</div>
           </aside>
         </div>
 

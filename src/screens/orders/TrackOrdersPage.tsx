@@ -7,6 +7,7 @@ import {
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useFirebaseData'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
+import { ClockIcon, CreditCardIcon, MapPinIcon, PackageIcon, PrinterIcon, ReceiptIcon } from '../../components/icons'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type FsTs = { toDate?: () => Date; seconds?: number }
@@ -91,13 +92,13 @@ const STATUS_META: Record<string, { label: string; color: string; bg: string }> 
 const getStatusMeta = (s?: string) =>
   STATUS_META[s?.toLowerCase() ?? ''] ?? { label: s ?? 'Unknown', color: '#475569', bg: '#f1f5f9' }
 
-const PAYMENT_META: Record<string, { label: string; icon: string }> = {
-  wallet:      { label: 'Wallet Balance', icon: '💳' },
-  card:        { label: 'Debit/Credit Card', icon: '💳' },
-  paystack:    { label: 'Paystack', icon: '💳' },
-  cash:        { label: 'Cash on Delivery', icon: '💵' },
-  cod:         { label: 'Cash on Delivery', icon: '💵' },
-  bank:        { label: 'Bank Transfer', icon: '🏦' },
+const PAYMENT_META: Record<string, { label: string }> = {
+  wallet:      { label: 'Wallet Balance' },
+  card:        { label: 'Debit/Credit Card' },
+  paystack:    { label: 'Paystack' },
+  cash:        { label: 'Cash on Delivery' },
+  cod:         { label: 'Cash on Delivery' },
+  bank:        { label: 'Bank Transfer' },
 }
 const getPaymentLabel = (m?: string) =>
   PAYMENT_META[m?.toLowerCase() ?? '']?.label ?? (m ?? 'Unknown')
@@ -303,7 +304,7 @@ function OrderDetail({ order, onBack }: { order: Order; onBack?: () => void }) {
               {fmt(order.totalAmount ?? 0)}
             </div>
             <button className="to-print-btn" type="button" onClick={handlePrint}>
-              🖨 Print Receipt
+              <PrinterIcon /> Print Receipt
             </button>
           </div>
         </div>
@@ -327,7 +328,7 @@ function OrderDetail({ order, onBack }: { order: Order; onBack?: () => void }) {
         <StatusTimeline steps={steps} currentStep={currentStep} />
         {status?.estimatedDelivery && (
           <div className="to-eta">
-            <span style={{ fontSize: 18 }}>🕐</span>
+            <span style={{ display: 'inline-flex' }}><ClockIcon /></span>
             <div>
               <div className="to-eta-text">Estimated Delivery</div>
               <div className="to-eta-sub">{fmtDate(status.estimatedDelivery, true)}</div>
@@ -360,7 +361,7 @@ function OrderDetail({ order, onBack }: { order: Order; onBack?: () => void }) {
         </div>
         {order.paymentMethod && (
           <div style={{ marginTop: 12, background: 'var(--bg)', borderRadius: 'var(--radius)', padding: '10px 14px', fontSize: 13, color: 'var(--text-2)' }}>
-            💳 Paid with {getPaymentLabel(order.paymentMethod)}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><CreditCardIcon size={14} /> Paid with {getPaymentLabel(order.paymentMethod)}</span>
             {order.paymentStatus && (
               <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, background: '#d1fae5', color: '#065f46', padding: '2px 8px', borderRadius: 99 }}>
                 {order.paymentStatus.toUpperCase()}
@@ -375,7 +376,7 @@ function OrderDetail({ order, onBack }: { order: Order; onBack?: () => void }) {
         <div className="to-card">
           <div className="to-card-title">Delivery Address</div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>📍</div>
+            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--blue-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}><MapPinIcon /></div>
             <div>
               {address.name && <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{address.name}</div>}
               {address.addressLine1 && <div style={{ fontSize: 13, color: 'var(--text-2)' }}>{address.addressLine1}</div>}
@@ -424,7 +425,7 @@ function OrderDetail({ order, onBack }: { order: Order; onBack?: () => void }) {
                     <div key={ii} className="to-item-row">
                       {item.imageUrl
                         ? <img className="to-item-img" src={item.imageUrl} alt={item.productName} />
-                        : <div className="to-item-img-ph">📦</div>
+                        : <div className="to-item-img-ph"><PackageIcon /></div>
                       }
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div className="to-item-name">{item.productName}</div>
@@ -559,7 +560,7 @@ export function TrackOrdersPage() {
             </div>
           ) : orders.length === 0 ? (
             <div className="to-empty">
-              <div className="to-empty-icon">📦</div>
+              <div className="to-empty-icon"><PackageIcon size={32} /></div>
               <div className="to-empty-title">No orders yet</div>
               <div className="to-empty-sub">Your orders will appear here after you make a purchase.</div>
               <button
@@ -617,7 +618,7 @@ export function TrackOrdersPage() {
                 : (
                   <div className="to-detail-col">
                     <div className="to-empty">
-                      <div className="to-empty-icon">📋</div>
+                      <div className="to-empty-icon"><ReceiptIcon filled={false} /></div>
                       <div className="to-empty-title">Select an order</div>
                       <div className="to-empty-sub">Click an order on the left to see its details.</div>
                     </div>

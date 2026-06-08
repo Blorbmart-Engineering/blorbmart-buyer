@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
+import { PackageIcon } from '../../components/icons'
 import { ProductCard } from '../../components/ProductCard'
 import { StarIcon, ClockIcon, TruckIcon } from '../../components/icons'
 
@@ -164,7 +165,7 @@ export function StoreDetailsPage() {
               </div>
               {products.length === 0 ? (
                 <div className="sd-empty">
-                  <div className="sd-empty-icon">📦</div>
+                  <div className="sd-empty-icon"><PackageIcon size={32} /></div>
                   <div className="sd-empty-text">No products listed yet</div>
                 </div>
               ) : (

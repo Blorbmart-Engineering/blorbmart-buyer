@@ -117,7 +117,7 @@ export function SearchPage() {
               </>
             ) : (
               <div className="sp-empty">
-                <div className="sp-empty-icon">🔍</div>
+                <div className="sp-empty-icon"><SearchIcon /></div>
                 <div className="sp-empty-title">No results found</div>
                 <div className="sp-empty-sub">No products match "{debouncedQuery}".<br />Try a different search term.</div>
               </div>
