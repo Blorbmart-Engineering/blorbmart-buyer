@@ -8,18 +8,22 @@ import { printWalletReceipt } from '../../lib/receiptPrinter'
 // ─── API Service ────────────────────────────────────────────────────────────────
 const BASE = `${import.meta.env.VITE_API_BASE_URL ?? 'https://blorbmart.onrender.com'}/api/wallet`
 
-async function fetchBalance(userId: string): Promise<number> {
+async function fetchBalance(userId: string, idToken: string): Promise<number> {
   try {
-    const res = await fetch(`${BASE}/${userId}`)
+    const res = await fetch(`${BASE}/${userId}`, {
+      headers: { 'Authorization': `Bearer ${idToken}` },
+    })
     const d = await res.json()
     if (!res.ok || d.status !== 'success') throw new Error()
     return Number(d.data?.balance ?? 0)
   } catch { return 0 }
 }
 
-async function fetchTransactions(userId: string): Promise<WalletTx[]> {
+async function fetchTransactions(userId: string, idToken: string): Promise<WalletTx[]> {
   try {
-    const res = await fetch(`${BASE}/${userId}/transactions?page=1&limit=100`)
+    const res = await fetch(`${BASE}/${userId}/transactions?page=1&limit=100`, {
+      headers: { 'Authorization': `Bearer ${idToken}` },
+    })
     const d = await res.json()
     if (!res.ok || d.status !== 'success') throw new Error()
     return ((d.data?.transactions ?? []) as Record<string, unknown>[]).map(e => ({
@@ -36,19 +40,24 @@ async function fetchTransactions(userId: string): Promise<WalletTx[]> {
   } catch { return [] }
 }
 
-async function initiateFunding(userId: string, email: string, amount: number) {
+async function initiateFunding(userId: string, email: string, amount: number, idToken: string) {
   const res = await fetch(`${BASE}/fund`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${idToken}`,
+    },
     body: JSON.stringify({ userId, email, amount }),
   })
   const d = await res.json()
   if (!res.ok || d.status !== 'success') throw new Error(d.message ?? 'Failed to initialize funding')
-  return d.data as { authorization_url: string; reference: string }
+  return d.data as { authorization_url: string; reference: string; access_code: string }
 }
 
-async function verifyPayment(reference: string) {
-  const res = await fetch(`${BASE}/verify/${reference}`)
+async function verifyPayment(reference: string, idToken: string) {
+  const res = await fetch(`${BASE}/verify/${reference}`, {
+    headers: { 'Authorization': `Bearer ${idToken}` },
+  })
   const d = await res.json()
   if (!res.ok || d.status !== 'success') throw new Error('Payment verification failed')
   return d.data as { status: string; amount: number }
@@ -177,43 +186,7 @@ const css = `
   .wl-spinner { width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; animation:spin .7s linear infinite; }
 `
 
-// ─── Paystack Modal ─────────────────────────────────────────────────────────────
-function PaystackModal({
-  amount, reference, authUrl, onVerify, onCancel,
-}: {
-  amount: number; reference: string; authUrl: string
-  onVerify: () => void; onCancel: () => void
-}) {
-  return (
-    <div className="wl-confirm">
-      <div className="wl-confirm-box">
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><CreditCardIcon size={40} /></div>
-        <div className="wl-confirm-title" style={{ textAlign: 'center' }}>Complete Payment</div>
-        <div className="wl-confirm-desc" style={{ textAlign: 'center' }}>
-          A Paystack checkout page has been opened for <strong>{fmt(amount)}</strong>. Complete the payment there, then tap the button below.
-        </div>
-        <div className="wl-confirm-btns">
-          <button className="wl-confirm-primary" onClick={onVerify}>
-            ✓ I've Paid — Verify Now
-          </button>
-          <button
-            className="wl-confirm-link"
-            onClick={() => window.open(authUrl, '_blank')}
-          >
-            Reopen payment page
-          </button>
-          <button className="wl-confirm-secondary" onClick={onCancel}>
-            Cancel
-          </button>
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--text-3)', textAlign: 'center', marginTop: 10 }}>
-          Ref: {reference}
-        </div>
-      </div>
-    </div>
-  )
-}
-
+// Paystack inline JS v2 type declaration
 // ─── Main Component ─────────────────────────────────────────────────────────────
 export default function WalletScreen() {
   const navigate = useNavigate()
@@ -228,15 +201,18 @@ export default function WalletScreen() {
   const [showFundModal, setShowFundModal] = useState(false)
   const [fundAmount, setFundAmount] = useState('')
   const [processingPayment, setProcessingPayment] = useState(false)
-  const [paystackData, setPaystackData] = useState<{ amount: number; reference: string; authUrl: string } | null>(null)
-  const [verifying, setVerifying] = useState(false)
+  const [verifying, setVerifying]   = useState(false)
+  const [paystackUrl, setPaystackUrl] = useState('')
+  const [paystackRef, setPaystackRef] = useState('')
+  const [showPaystackModal, setShowPaystackModal] = useState(false)
 
   const load = async (quiet = false) => {
     if (!user) return
     if (!quiet) setLoading(true)
     else setRefreshing(true)
     try {
-      const [bal, all] = await Promise.all([fetchBalance(user.uid), fetchTransactions(user.uid)])
+      const idToken = await user.getIdToken()
+      const [bal, all] = await Promise.all([fetchBalance(user.uid, idToken), fetchTransactions(user.uid, idToken)])
       setBalance(bal)
       setTxns(all.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()))
     } finally {
@@ -259,38 +235,61 @@ export default function WalletScreen() {
   const handleFund = async () => {
     const amount = parseFloat(fundAmount)
     if (!amount || amount <= 0 || !user) return
-    setProcessingPayment(true)
-    try {
-      const data = await initiateFunding(user.uid, user.email ?? '', amount)
-      window.open(data.authorization_url, '_blank')
-      setShowFundModal(false)
-      setFundAmount('')
-      setPaystackData({ amount, reference: data.reference, authUrl: data.authorization_url })
-    } catch (e) {
-      alert(`Payment error: ${e instanceof Error ? e.message : 'Unknown error'}`)
-    } finally {
-      setProcessingPayment(false)
+    if (!window.PaystackPop) {
+      alert('Payment gateway is still loading. Please try again in a moment.')
+      return
     }
-  }
+    setProcessingPayment(true)
+    setShowFundModal(false)
+    setFundAmount('')
 
-  const handleVerify = async () => {
-    if (!paystackData) return
-    setVerifying(true)
+    // Step 1: create transaction on backend — surface any errors here
+    let accessCode: string
     try {
-      const result = await verifyPayment(paystackData.reference)
-      setPaystackData(null)
-      if (result.status === 'completed') {
-        await load(true)
-        alert(`${fmt(result.amount)} added to your wallet!`)
-      } else if (result.status === 'pending') {
-        alert('Payment is still processing — refresh in a moment.')
-      } else {
-        alert(`Payment status: ${result.status}. Contact support if charged.`)
-      }
+      const idToken = await user.getIdToken()
+      const data = await initiateFunding(user.uid, user.email ?? '', amount, idToken)
+      accessCode = data.access_code
+    } catch (e) {
+      setProcessingPayment(false)
+      alert(`Could not start payment: ${e instanceof Error ? e.message : 'Unknown error'}`)
+      return
+    }
+
+    // Step 2: open Paystack popup
+    // newTransaction may throw internally even when the popup opens successfully,
+    // because Paystack v2's JS registers callbacks first then does internal setup.
+    // So: catch silently — onSuccess/onCancel will still fire correctly.
+    try {
+      new window.PaystackPop().newTransaction({
+        access_code: accessCode,
+        onSuccess: async (transaction) => {
+          setVerifying(true)
+          try {
+            const freshToken = await user.getIdToken()
+            const result = await verifyPayment(transaction.reference, freshToken)
+            await load(true)
+            if (result.status === 'completed') {
+              alert(`${fmt(result.amount)} added to your wallet!`)
+            } else {
+              alert('Payment received — your balance will update shortly.')
+            }
+          } catch {
+            await load(true)
+            alert('Payment received but verification is pending. Check your balance in a moment.')
+          } finally {
+            setVerifying(false)
+            setProcessingPayment(false)
+          }
+        },
+        onCancel: () => {
+          setProcessingPayment(false)
+        },
+      })
     } catch {
-      alert('Verification failed. Contact support with your reference number.')
-    } finally {
-      setVerifying(false)
+      // Paystack threw internally after the popup opened — callbacks are still live.
+      // Silently reset UI; onSuccess/onCancel will clean up if payment completes.
+      setProcessingPayment(false)
+      load(true)
     }
   }
 
@@ -518,17 +517,6 @@ export default function WalletScreen() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Paystack confirmation modal */}
-      {paystackData && (
-        <PaystackModal
-          amount={paystackData.amount}
-          reference={paystackData.reference}
-          authUrl={paystackData.authUrl}
-          onVerify={handleVerify}
-          onCancel={() => setPaystackData(null)}
-        />
       )}
 
       {/* Verifying overlay */}

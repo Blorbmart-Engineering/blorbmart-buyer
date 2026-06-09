@@ -11,10 +11,12 @@ import { FlashSaleSection } from '../../components/dashboard/FlashSaleSection'
 import { TopSellingSection } from '../../components/dashboard/TopSellingSection'
 import { FeaturedStores } from '../../components/dashboard/FeaturedStores'
 import { NewArrivals } from '../../components/dashboard/NewArrivals'
+import { TopRestaurantsSection } from '../../components/dashboard/TopRestaurantsSection'
+import { useUserLocation } from '../../hooks/useUserLocation'
 import {
   SearchIcon, CartIcon, BellIcon, HeartIcon, WalletIcon,
   UserCircleIcon, MenuIcon, CloseIcon, TruckIcon,
-  HomeIcon, ReceiptIcon, UserIcon,
+  HomeIcon, UserIcon, UtensilsIcon, MapPinIcon,
 } from '../../components/icons'
 
 // ─── Static data ──────────────────────────────────────────────────────────────
@@ -77,6 +79,8 @@ export default function Dashboard() {
   const { userData } = useUserData(user?.uid)
   const { products, loading: loadingProducts } = useProducts(8)
 
+  const geoLocation = useUserLocation()
+
   const [wishlist, setWishlist] = useState<Set<string>>(new Set())
   const [walletBalance, setWalletBalance] = useState(0)
   const [notifCount, setNotifCount] = useState(0)
@@ -135,6 +139,7 @@ export default function Dashboard() {
   const activeTab =
     currentPath === '/dashboard' ? 'home'
     : currentPath === '/wishlist' ? 'wishlist'
+    : currentPath === '/food' ? 'food'
     : currentPath === '/track' || currentPath === '/transactions' ? 'orders'
     : currentPath === '/profile' ? 'account'
     : 'home'
@@ -224,8 +229,77 @@ export default function Dashboard() {
         <MobileMenu isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
 
         <main className="bm-page">
+
+          {/* Mobile Flutter-style home header (hidden on desktop) */}
+          <div className="bm-mobile-home">
+            {/* Row 1: greeting + icons */}
+            <div className="bm-mh-row1">
+              <div>
+                <div className="bm-mh-greet">Good {getGreeting()}, {shortName}!</div>
+                <div className="bm-mh-sub">Get affordable deals now</div>
+              </div>
+              <div className="bm-mh-icons">
+                <button className="bm-mh-icon-btn" type="button" onClick={() => navigate('/cart')}>
+                  <CartIcon count={0} />
+                  {itemCount > 0 && <span className="bm-mh-badge">{itemCount > 99 ? '99+' : itemCount}</span>}
+                </button>
+                <button className="bm-mh-icon-btn" type="button" onClick={() => navigate('/notifications')}>
+                  <BellIcon count={0} />
+                  {notifCount > 0 && <span className="bm-mh-badge">{notifCount > 99 ? '99+' : notifCount}</span>}
+                </button>
+              </div>
+            </div>
+
+            {/* Row 2: search bar */}
+            <div className="bm-mobile-search-bar" onClick={() => navigate('/search')}>
+              <SearchIcon size={18} />
+              <span>{SEARCH_PLACEHOLDERS[placeholderIdx]}</span>
+              <div className="bm-mobile-search-div" />
+              <div className="bm-mobile-search-filter">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+                </svg>
+              </div>
+            </div>
+
+            {/* Row 3: location strip */}
+            <div className="bm-mobile-location">
+              <MapPinIcon size={16} />
+              <div className="bm-mobile-location-text">
+                Delivering to:{' '}
+                {geoLocation.loading
+                  ? <strong style={{ opacity: 0.6 }}>Getting location…</strong>
+                  : geoLocation.denied
+                    ? <strong style={{ opacity: 0.6 }}>Location off</strong>
+                    : <strong>{geoLocation.label || 'Your location'}</strong>
+                }
+              </div>
+              <button className="bm-mobile-location-change" type="button" onClick={geoLocation.detect}>
+                {geoLocation.loading ? '…' : 'Change'}
+              </button>
+            </div>
+          </div>
+
           <HeroBanner />
           <CategoryGrid />
+          <TopRestaurantsSection />
+
+          {/* Food & Dining shortcut banner (desktop only) */}
+          <div
+            className="bm-desktop-only"
+            onClick={() => navigate('/food')}
+            style={{ margin: '0 0 24px', cursor: 'pointer', background: 'linear-gradient(135deg,#f97316 0%,#ea580c 100%)', borderRadius: 18, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 6px 20px rgba(249,115,22,.35)' }}
+          >
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(255,255,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#fff' }}>
+              <UtensilsIcon size={26} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 17, fontWeight: 800, color: '#fff', marginBottom: 3 }}>Food & Dining</div>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,.8)' }}>Order from campus restaurants near you</div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+
           <FlashSaleSection products={products} loading={loadingProducts} wishlist={wishlist} onWishlist={toggleWishlist} />
           <FeaturedStores />
           <TopSellingSection products={products} loading={loadingProducts} wishlist={wishlist} onWishlist={toggleWishlist} />
@@ -279,8 +353,8 @@ export default function Dashboard() {
             {[
               { tab: 'home', label: 'Home', path: '/dashboard', icon: <HomeIcon filled={activeTab === 'home'} /> },
               { tab: 'wishlist', label: 'Wishlist', path: '/wishlist', icon: <HeartIcon filled={activeTab === 'wishlist'} /> },
-              { tab: 'orders', label: 'Orders', path: '/track', icon: <ReceiptIcon filled={activeTab === 'orders'} /> },
-              { tab: 'account', label: 'Account', path: '/profile', icon: <UserIcon filled={activeTab === 'account'} /> },
+              { tab: 'food', label: 'Food', path: '/food', icon: <UtensilsIcon size={22} /> },
+              { tab: 'account', label: 'Profile', path: '/profile', icon: <UserIcon filled={activeTab === 'account'} /> },
             ].map(({ tab, label, path, icon }) => (
               <button
                 key={tab}

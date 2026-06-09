@@ -362,3 +362,19 @@ export const PrinterIcon = ({ size = 16 }: { size?: number }) => (
     <rect x="6" y="14" width="12" height="8"/>
   </svg>
 )
+
+export const UtensilsIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2"/><line x1="7" y1="2" x2="7" y2="22"/>
+    <path d="M21 15V2a5 5 0 00-5 5v6c0 1.1.9 2 2 2h1a2 2 0 012 2v3"/><line x1="21" y1="22" x2="21" y2="15"/>
+  </svg>
+)
+
+export const TimerIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="13" r="8"/>
+    <path d="M12 9v4l2 2"/>
+    <path d="M5 3 2 6"/><path d="M22 6l-3-3"/>
+    <path d="M6.38 18.7 4 21"/><path d="M17.64 18.67 20 21"/>
+  </svg>
+)

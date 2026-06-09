@@ -364,4 +364,50 @@ export const dashboardCss = `
   .bm-animate-3 { animation-delay: .15s; }
   .bm-animate-4 { animation-delay: .2s; }
   .bm-animate-5 { animation-delay: .25s; }
+
+  /* ── Mobile Home Header ────────────────────────────── */
+  .bm-mobile-home { display: none; padding: 16px 16px 0; }
+  .bm-mh-row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .bm-mh-greet { font-family:'Bricolage Grotesque',sans-serif; font-size: 19px; font-weight: 800; color: var(--text); line-height: 1.2; }
+  .bm-mh-sub { font-size: 12px; color: var(--text-2); margin-top: 3px; }
+  .bm-mh-icons { display: flex; gap: 8px; }
+  .bm-mh-icon-btn { width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--border); background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; box-shadow: 0 1px 4px rgba(0,0,0,.06); flex-shrink: 0; }
+  .bm-mh-badge { position: absolute; top: -2px; right: -2px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: var(--orange); color: #fff; font-size: 9px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+
+  .bm-mobile-search-bar { display: flex; align-items: center; gap: 10px; border: 1.5px solid var(--border); border-radius: 14px; padding: 13px 14px; background: #fff; cursor: pointer; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+  .bm-mobile-search-bar span { flex: 1; font-size: 13px; color: var(--text-3); font-family:'Plus Jakarta Sans',sans-serif; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .bm-mobile-search-div { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+  .bm-mobile-search-filter { color: var(--purple); display: flex; flex-shrink: 0; }
+
+  .bm-mobile-location { display: flex; align-items: center; gap: 9px; padding: 11px 14px; background: #F4F4FF; border: 1.5px solid rgba(81,86,241,.22); border-radius: 14px; cursor: pointer; margin-bottom: 0; }
+  .bm-mobile-location-text { flex: 1; font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bm-mobile-location-text strong { color: var(--text); font-weight: 700; }
+  .bm-mobile-location-change { font-size: 12px; font-weight: 700; color: var(--purple); background: rgba(81,86,241,.1); border: none; border-radius: 8px; padding: 5px 10px; cursor: pointer; font-family:'Plus Jakarta Sans',sans-serif; flex-shrink: 0; }
+
+  /* ── Mobile Category Scroll ─────────────────────── */
+  .bm-cats-scroll { display: none; gap: 14px; overflow-x: auto; padding: 4px 0 10px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .bm-cats-scroll::-webkit-scrollbar { display: none; }
+  .bm-cat-scroll-item { flex-shrink: 0; width: 80px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; }
+  .bm-cat-scroll-icon { width: 70px; height: 70px; border-radius: 18px; border: 1px solid rgba(0,0,0,.07); display: flex; align-items: center; justify-content: center; font-size: 28px; transition: transform .15s; }
+  .bm-cat-scroll-item:hover .bm-cat-scroll-icon { transform: translateY(-3px); }
+  .bm-cat-scroll-label { font-size: 11px; font-weight: 600; color: var(--text); text-align: center; line-height: 1.25; }
+
+  /* ── Top Restaurants Strip ─────────────────────── */
+  .bm-restaurants-scroll { display: flex; gap: 14px; overflow-x: auto; padding: 4px 0 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .bm-restaurants-scroll::-webkit-scrollbar { display: none; }
+  .bm-restaurant-item { flex-shrink: 0; width: 90px; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+  .bm-restaurant-logo { width: 72px; height: 72px; border-radius: 50%; border: 1.5px solid var(--border); overflow: hidden; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,.1); transition: transform .15s; }
+  .bm-restaurant-logo img { width: 100%; height: 100%; object-fit: cover; }
+  .bm-restaurant-item:hover .bm-restaurant-logo { transform: translateY(-2px); }
+  .bm-restaurant-name { font-size: 11px; font-weight: 600; color: var(--text); text-align: center; margin-top: 8px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bm-restaurant-rating { display: flex; align-items: center; gap: 2px; font-size: 10px; color: var(--text-2); margin-top: 2px; justify-content: center; }
+
+  @media (max-width: 820px) {
+    .bm-announce { display: none; }
+    .bm-header { display: none; }
+    .bm-page { padding-top: 0; }
+    .bm-mobile-home { display: block; }
+    .bm-cats-grid { display: none; }
+    .bm-cats-scroll { display: flex; }
+  }
 `

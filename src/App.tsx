@@ -19,6 +19,7 @@ import { FaqPage } from './screens/faq/FaqPage'
 import { LegalPage } from './screens/legal/LegalPage'
 import { SplashScreen } from './screens/splash/SplashScreen'
 import { OnboardingScreen } from './screens/onboarding/OnboardingScreen'
+import { FoodPage } from './screens/food/FoodPage'
 import PrivateRoute from './components/PrivateRoute'
 
 function App() {
@@ -47,6 +48,7 @@ function App() {
       <Route path="/search" element={<PrivateRoute><SearchPage /></PrivateRoute>} />
       <Route path="/store/:id" element={<PrivateRoute><StoreDetailsPage /></PrivateRoute>} />
       <Route path="/notifications" element={<PrivateRoute><NotificationsPage /></PrivateRoute>} />
+      <Route path="/food" element={<PrivateRoute><FoodPage /></PrivateRoute>} />
       <Route path="/faq" element={<PrivateRoute><FaqPage /></PrivateRoute>} />
       <Route path="/terms" element={<PrivateRoute><LegalPage /></PrivateRoute>} />
       <Route path="/privacy" element={<PrivateRoute><LegalPage /></PrivateRoute>} />
