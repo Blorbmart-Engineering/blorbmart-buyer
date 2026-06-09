@@ -11,18 +11,20 @@ export const css = `
   .auth-root {
     font-family: 'Raleway', sans-serif;
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
     background: linear-gradient(to bottom, #1055C8 0%, #1F77F1 55%, #1A6ADE 100%);
     position: relative;
+    overflow-x: hidden;
   }
 
-  /* Decorative circles (Flutter's Positioned white circles) */
+  /* Decorative circles — kept inside viewport */
   .auth-root::before {
     content: '';
     position: absolute;
-    top: -80px; right: -80px;
-    width: 240px; height: 240px;
+    top: -60px; right: -60px;
+    width: 200px; height: 200px;
     border-radius: 50%;
     background: rgba(255,255,255,.06);
     pointer-events: none;
@@ -30,8 +32,8 @@ export const css = `
   .auth-root::after {
     content: '';
     position: absolute;
-    top: 120px; left: -50px;
-    width: 150px; height: 150px;
+    top: 110px; left: -40px;
+    width: 130px; height: 130px;
     border-radius: 50%;
     background: rgba(255,255,255,.04);
     pointer-events: none;
@@ -44,18 +46,23 @@ export const css = `
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 40px 28px 24px;
+    padding: 44px 24px 28px;
     position: relative;
     z-index: 1;
     animation: fadeSlideDown .5s both;
   }
   .auth-logo {
-    height: 72px;
-    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    max-width: 100%;
   }
   .auth-logo img {
-    height: 100%;
+    height: 48px;
+    width: auto;
     object-fit: contain;
+    flex-shrink: 0;
     filter: drop-shadow(0 2px 8px rgba(0,0,0,.15));
   }
   .auth-tagline {
@@ -64,33 +71,37 @@ export const css = `
     color: rgba(255,255,255,.9);
     letter-spacing: .2px;
     text-align: center;
+    padding: 0 16px;
   }
 
   /* White curved sheet — anchored bottom on mobile, centered card on desktop */
   .auth-sheet {
     background: #fff;
     border-radius: 36px 36px 0 0;
-    padding: 32px 28px calc(40px + env(safe-area-inset-bottom, 0px));
+    padding: 32px 24px calc(40px + env(safe-area-inset-bottom, 0px));
     position: relative;
     z-index: 2;
     flex: 1;
+    overflow-y: auto;
     animation: slideUp .45s .1s both;
+    width: 100%;
+    box-sizing: border-box;
   }
   @media (min-width: 560px) {
     .auth-root {
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
       padding: 24px;
     }
     .auth-top {
-      flex: none;
-      padding: 0 0 20px;
+      padding: 0 0 24px;
     }
     .auth-sheet {
       border-radius: 28px;
-      width: 440px;
+      width: 100%;
+      max-width: 460px;
       flex: none;
+      padding: 36px 36px 36px;
     }
   }
 

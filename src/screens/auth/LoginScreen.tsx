@@ -60,8 +60,11 @@ export default function LoginScreen() {
 
         {/* Blue section: logo + tagline */}
         <div className="auth-top">
-          <div className="auth-logo">
-            <img src="/bluefulllogowithname.png" alt="Blorbmart" />
+          <div className="auth-logo" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <img src="/whitelogo.png" alt="Blorbmart" style={{ height: 52, objectFit: 'contain' }} />
+            <span style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 28, fontWeight: 800, color: '#fff', letterSpacing: -0.5 }}>
+              Blorb<span style={{ color: 'rgba(255,255,255,0.75)' }}>mart</span>
+            </span>
           </div>
           <p className="auth-tagline">Prices that understand your budget</p>
         </div>
