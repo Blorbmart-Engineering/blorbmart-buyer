@@ -37,17 +37,19 @@ export function ProductCard({
   const isFood = item.categoryId === 'food_drinks'
   const accent = isFood ? '#ff5500' : 'var(--blue)'
 
-  const discountPct =
-    item.price && item.discountPrice && item.price > item.discountPrice
-      ? Math.round(((item.price - item.discountPrice) / item.price) * 100)
-      : null
+  const hasDiscount = !!item.discountPrice && item.discountPrice > 0 && item.discountPrice < item.price
+  const displayPrice = hasDiscount ? (item.discountPrice as number) : item.price
+
+  const discountPct = hasDiscount
+    ? Math.round(((item.price - (item.discountPrice as number)) / item.price) * 100)
+    : null
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation()
     addItem({
       id: item.id,
       name: item.name,
-      price: item.discountPrice ?? item.price,
+      price: displayPrice,
       image: item.images?.[0] ?? '',
       storeName: item.storeName ?? '',
     })
@@ -98,8 +100,8 @@ export function ProductCard({
         )}
         <div className="bm-product-prices">
           <div className="bm-product-price-col">
-            <span className="bm-product-price" style={{ color: accent }}>{fmt(item.discountPrice ?? item.price)}</span>
-            {item.discountPrice && item.price > item.discountPrice && (
+            <span className="bm-product-price" style={{ color: accent }}>{fmt(displayPrice)}</span>
+            {hasDiscount && (
               <span className="bm-product-original">{fmt(item.price)}</span>
             )}
           </div>

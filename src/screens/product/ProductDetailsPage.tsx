@@ -48,11 +48,13 @@ const css = `
 
   /* Body layout */
   .pd-body { max-width: 1280px; margin: 0 auto; padding: 24px 16px 100px; display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-  @media (max-width: 820px) { .pd-body { grid-template-columns: 1fr; padding: 12px 12px 120px; gap: 0; } }
+  @media (max-width: 820px) { .pd-body { grid-template-columns: 1fr; padding: 0 0 120px; gap: 0; } }
 
   /* Image gallery */
   .pd-gallery { position: sticky; top: 72px; align-self: start; }
+  @media (max-width: 820px) { .pd-gallery { position: static; padding: 0 12px; margin-bottom: 16px; } }
   .pd-main-img { width: 100%; border-radius: var(--radius-lg); overflow: hidden; background: #EEF2FF; aspect-ratio: 1; position: relative; }
+  @media (max-width: 820px) { .pd-main-img { border-radius: 0; aspect-ratio: 4 / 3; margin: 0 -12px; width: calc(100% + 24px); } }
   .pd-main-img img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
   .pd-img-nav { position: absolute; top: 50%; transform: translateY(-50%); display: flex; justify-content: space-between; width: 100%; padding: 0 10px; pointer-events: none; }
   .pd-img-arrow { pointer-events: all; width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.9); border: 1.5px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
@@ -67,6 +69,7 @@ const css = `
 
   /* Details */
   .pd-details { }
+  @media (max-width: 820px) { .pd-details { padding: 0 12px; } }
   .pd-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); margin-bottom: 14px; flex-wrap: wrap; }
   .pd-breadcrumb a { color: var(--text-3); text-decoration: none; cursor: pointer; }
   .pd-breadcrumb a:hover { color: var(--blue); }
@@ -309,8 +312,10 @@ export function ProductDetailsPage() {
 
   const images = useMemo(() => product?.images?.length ? product.images : ['/second.jpg'], [product])
   const selectedVariant = selectedVariantIndex >= 0 ? variants[selectedVariantIndex] : undefined
-  const price = (product?.discountPrice ?? product?.price ?? 0) + (selectedVariant?.additionalPrice ?? 0)
-  const oldPrice = (!selectedVariant && product?.discountPrice) ? product?.price : undefined
+  const hasDiscount = !!product?.discountPrice && product.discountPrice > 0 && product.discountPrice < (product?.price ?? 0)
+  const basePrice = hasDiscount ? (product?.discountPrice ?? 0) : (product?.price ?? 0)
+  const price = basePrice + (selectedVariant?.additionalPrice ?? 0)
+  const oldPrice = (!selectedVariant && hasDiscount) ? product?.price : undefined
   const discountPct = oldPrice ? Math.round(((oldPrice - price) / oldPrice) * 100) : null
   // undefined stockQuantity = made-to-order (food), treat as unlimited
   const stock = selectedVariant ? selectedVariant.stockQuantity : product?.stockQuantity
