@@ -7,6 +7,7 @@ import { dashboardCss } from '../../components/dashboard/dashboardStyles'
 import { PackageIcon, CloseIcon, UserCircleIcon, MapPinIcon } from '../../components/icons'
 import { ProductCard } from '../../components/ProductCard'
 import { StarIcon, ClockIcon, TruckIcon } from '../../components/icons'
+import { FoodCartBar } from '../../components/FoodCartBar'
 
 type Store = {
   id: string; vendorId?: string; storeName: string; logoUrl?: string; coverImageUrl?: string
@@ -411,6 +412,7 @@ export function StoreDetailsPage() {
           </div>
         </div>
       )}
+      <FoodCartBar />
     </>
   )
 }

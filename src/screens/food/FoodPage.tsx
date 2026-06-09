@@ -9,6 +9,7 @@ import { useAuth } from '../../hooks/useFirebaseData'
 import { useUserLocation } from '../../hooks/useUserLocation'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
 import { SearchIcon, StarIcon, UtensilsIcon, TimerIcon, MapPinIcon, HeartIcon, BagIcon } from '../../components/icons'
+import { FoodCartBar } from '../../components/FoodCartBar'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -630,6 +631,7 @@ export function FoodPage() {
 
         </div>
       </div>
+      <FoodCartBar />
     </>
   )
 }

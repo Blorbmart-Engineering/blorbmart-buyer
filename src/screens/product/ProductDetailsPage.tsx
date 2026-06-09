@@ -12,7 +12,7 @@ type Product = {
   id: string; name: string; description?: string
   price: number; discountPrice?: number; vendorId?: string; storeId?: string
   rating?: number; totalReviews?: number; totalSold?: number; stockQuantity?: number
-  images?: string[]; categoryName?: string; subCategoryName?: string; storeName?: string
+  images?: string[]; categoryId?: string; categoryName?: string; subCategoryName?: string; storeName?: string
 }
 
 type ProductVariant = { name: string; additionalPrice: number; stockQuantity: number }
@@ -324,10 +324,26 @@ export function ProductDetailsPage() {
 
   const handleAddToCart = () => {
     if (!product) return
-    addItem({
+    const cartItem = {
       id: product.id, name: selectedVariant ? `${product.name} (${selectedVariant.name})` : product.name,
-      price, image: images[0], storeName: product.storeName, vendorId: product.vendorId, categoryName: product.categoryName,
-    }, qty)
+      price, image: images[0], storeName: product.storeName, vendorId: product.vendorId,
+      categoryId: product.categoryId, categoryName: product.categoryName,
+    }
+    const isFood = product.categoryId === 'food_drinks'
+    const result = addItem(cartItem, qty)
+    if (result === 'mixed_cart') {
+      const ok = window.confirm(
+        isFood
+          ? 'Your cart has non-food items. Adding food will clear your current cart. Continue?'
+          : 'Your cart has food items from a restaurant. Adding this will clear your current cart. Continue?'
+      )
+      if (ok) addItem(cartItem, qty, { force: true })
+    } else if (result === 'different_restaurant') {
+      const ok = window.confirm(
+        `Your cart has items from ${product.storeName ?? 'another restaurant'}. Adding from a different restaurant will clear your current cart. Continue?`
+      )
+      if (ok) addItem(cartItem, qty, { force: true })
+    }
   }
 
   const submitReview = async () => {

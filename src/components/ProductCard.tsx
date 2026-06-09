@@ -15,6 +15,7 @@ type Product = {
   categoryId?: string
   categoryName?: string
   storeName?: string
+  vendorId?: string
 }
 
 const fmt = (v: number) =>
@@ -46,13 +47,29 @@ export function ProductCard({
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation()
-    addItem({
+    const cartItem = {
       id: item.id,
       name: item.name,
       price: displayPrice,
       image: item.images?.[0] ?? '',
       storeName: item.storeName ?? '',
-    })
+      vendorId: item.vendorId,
+      categoryId: item.categoryId,
+    }
+    const result = addItem(cartItem)
+    if (result === 'mixed_cart') {
+      const ok = window.confirm(
+        isFood
+          ? 'Your cart has non-food items. Adding food will clear your current cart. Continue?'
+          : 'Your cart has food items from a restaurant. Adding this will clear your current cart. Continue?'
+      )
+      if (ok) addItem(cartItem, 1, { force: true })
+    } else if (result === 'different_restaurant') {
+      const ok = window.confirm(
+        `Your cart has items from ${item.storeName ?? 'another restaurant'}. Adding from a different restaurant will clear your current cart. Continue?`
+      )
+      if (ok) addItem(cartItem, 1, { force: true })
+    }
   }
 
   return (

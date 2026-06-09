@@ -177,7 +177,10 @@ function AddAddressModal({
     <div className="co-modal-overlay" onClick={onClose}>
       <div className="co-modal" onClick={e => e.stopPropagation()}>
         <div className="co-modal-handle" />
-        <div className="co-modal-title">Add Delivery Address</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div className="co-modal-title" style={{ margin: 0 }}>Add Delivery Address</div>
+          <button onClick={onClose} type="button" style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', lineHeight: 1, color: 'var(--text-2)', flexShrink: 0 }}>×</button>
+        </div>
 
         <div style={{ marginBottom: 16 }}>
           <div className="co-label" style={{ marginBottom: 8 }}>Label</div>
