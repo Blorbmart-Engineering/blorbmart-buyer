@@ -79,7 +79,7 @@ export async function createOrder(input: CheckoutInput) {
     currency: 'NGN',
     paymentMethod: input.paymentMethod,
     paymentStatus: 'pending',
-    orderStatus: 'placed',
+    orderStatus: 'pending',
     status: 'placed',
     address: {
       street: input.address.street,
@@ -97,18 +97,6 @@ export async function createOrder(input: CheckoutInput) {
     },
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  })
-
-  const transactionRef = doc(collection(db, 'transactions'))
-  await setDoc(transactionRef, {
-    userId: input.user.uid,
-    orderId,
-    amount: totalAmount,
-    currency: 'NGN',
-    type: 'shopping',
-    status: 'pending',
-    description: `Order placed: ${orderId}`,
-    createdAt: serverTimestamp(),
   })
 
   return { id: orderRef.id, orderId, totalAmount }
