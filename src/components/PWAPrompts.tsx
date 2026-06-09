@@ -3,6 +3,8 @@ import { useRegisterSW } from 'virtual:pwa-register/react'
 
 // ─── Update Toast ─────────────────────────────────────────────────────────────
 export function PWAUpdatePrompt() {
+  const [updating, setUpdating] = useState(false)
+
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
@@ -14,6 +16,15 @@ export function PWAUpdatePrompt() {
   })
 
   if (!needRefresh) return null
+
+  const handleUpdate = () => {
+    setUpdating(true)
+    // Force a reload shortly after telling the new SW to take over —
+    // some browsers don't fire `controllerchange` reliably, leaving the
+    // toast stuck and making it look like the click "didn't work".
+    const fallback = setTimeout(() => window.location.reload(), 1500)
+    updateServiceWorker(true).finally(() => clearTimeout(fallback))
+  }
 
   return (
     <>
@@ -49,8 +60,10 @@ export function PWAUpdatePrompt() {
           <strong>Update available</strong>
           A new version of Blorbmart is ready.
         </div>
-        <button className="pwa-update-btn secondary" onClick={() => setNeedRefresh(false)}>Later</button>
-        <button className="pwa-update-btn primary" onClick={() => updateServiceWorker(true)}>Update</button>
+        <button className="pwa-update-btn secondary" onClick={() => setNeedRefresh(false)} disabled={updating}>Later</button>
+        <button className="pwa-update-btn primary" onClick={handleUpdate} disabled={updating}>
+          {updating ? 'Updating…' : 'Update'}
+        </button>
       </div>
     </>
   )

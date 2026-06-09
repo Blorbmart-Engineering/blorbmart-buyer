@@ -50,6 +50,9 @@ export default defineConfig({
       },
 
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         // Don't cache Firebase SDK chunks — they need to be fresh for auth
         navigateFallback: '/index.html',
