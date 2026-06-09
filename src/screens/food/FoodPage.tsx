@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  collection, doc, getDocs, getDoc, orderBy,
+  collection, getDocs, orderBy,
   query, where,
 } from 'firebase/firestore'
 import { db } from '../../lib/firebase'

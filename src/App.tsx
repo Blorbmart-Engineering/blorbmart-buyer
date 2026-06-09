@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { PWAUpdatePrompt, PWAInstallBanner } from './components/PWAPrompts'
 import LoginScreen from './screens/auth/LoginScreen'
 import SignupScreen from './screens/auth/SignupScreen'
 import ForgotPasswordScreen from './screens/auth/ForgotPasswordScreen'
@@ -24,6 +25,8 @@ import PrivateRoute from './components/PrivateRoute'
 
 function App() {
   return (
+    <>
+    <PWAInstallBanner />
     <Routes>
       <Route path="/" element={<Navigate to="/splash" replace />} />
       <Route path="/splash" element={<SplashScreen />} />
@@ -53,6 +56,8 @@ function App() {
       <Route path="/terms" element={<PrivateRoute><LegalPage /></PrivateRoute>} />
       <Route path="/privacy" element={<PrivateRoute><LegalPage /></PrivateRoute>} />
     </Routes>
+    <PWAUpdatePrompt />
+    </>
   )
 }
 

@@ -278,7 +278,7 @@ function OrderDetail({ order, onBack }: { order: Order; onBack?: () => void }) {
 
   const handlePrint = () => printOrderReceipt({
     orderId: order.id,
-    items: storeOrders.flatMap(so => (so.items ?? []).map(it => ({ name: it.name, qty: it.quantity, price: it.price }))),
+    items: storeOrders.flatMap(so => (so.items ?? []).map(it => ({ name: it.productName, qty: it.quantity, price: it.price }))),
     subtotal: order.subtotal,
     deliveryFee: order.deliveryFee,
     discount: order.discountAmount,

@@ -1,4 +1,4 @@
-import { useNavigate, useParams, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
 import { LockIcon, DocumentIcon } from '../../components/icons'
 

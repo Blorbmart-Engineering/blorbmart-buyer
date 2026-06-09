@@ -7,7 +7,7 @@ import { SearchIcon, CloseIcon, FilterIcon } from '../../components/icons'
 
 function useDebounce<T>(value: T, delay = 300): T {
   const [debounced, setDebounced] = useState(value)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => {
     clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => setDebounced(value), delay)

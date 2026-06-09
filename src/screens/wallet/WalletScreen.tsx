@@ -213,9 +213,6 @@ export default function WalletScreen() {
   const [fundAmount, setFundAmount] = useState('')
   const [processingPayment, setProcessingPayment] = useState(false)
   const [verifying, setVerifying]   = useState(false)
-  const [paystackUrl, setPaystackUrl] = useState('')
-  const [paystackRef, setPaystackRef] = useState('')
-  const [showPaystackModal, setShowPaystackModal] = useState(false)
 
   const load = async (quiet = false) => {
     if (!user) return

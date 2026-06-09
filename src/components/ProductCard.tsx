@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { HeartIcon, StarIcon, ZapIcon } from './icons'
+import { HeartIcon, StarIcon, ZapIcon, StoreIcon, PlusIcon } from './icons'
 import { useCart } from '../contexts/CartContext'
 
 type Product = {
@@ -12,6 +12,7 @@ type Product = {
   totalSold?: number
   stockQuantity?: number
   images?: string[]
+  categoryId?: string
   categoryName?: string
   storeName?: string
 }
@@ -32,6 +33,9 @@ export function ProductCard({
 }) {
   const navigate = useNavigate()
   const { addItem } = useCart()
+
+  const isFood = item.categoryId === 'food_drinks'
+  const accent = isFood ? '#ff5500' : 'var(--blue)'
 
   const discountPct =
     item.price && item.discountPrice && item.price > item.discountPrice
@@ -59,6 +63,7 @@ export function ProductCard({
           {badge === 'sale' && discountPct && (
             <span className="bm-badge bm-badge-sale">-{discountPct}%</span>
           )}
+          {isFood && <span className="bm-badge bm-badge-food">Food</span>}
           {item.stockQuantity !== undefined && item.stockQuantity <= 5 && item.stockQuantity > 0 && (
             <span className="bm-badge bm-badge-low">Low Stock</span>
           )}
@@ -74,40 +79,32 @@ export function ProductCard({
         )}
       </div>
       <div className="bm-product-body">
-        {item.storeName && <div className="bm-product-store">{item.storeName}</div>}
         <div className="bm-product-name">{item.name}</div>
+        {item.storeName && (
+          <div className="bm-product-store">
+            <StoreIcon size={11} /> Sold by {item.storeName}
+          </div>
+        )}
         {(item.rating !== undefined || item.totalReviews !== undefined) && (
           <div className="bm-product-meta-row">
-            <div className="bm-product-stars">
-              {[1,2,3,4,5].map(s => <StarIcon key={s} size={10} />)}
-            </div>
+            <StarIcon size={13} />
             <span className="bm-product-rating-val">{(item.rating ?? 0).toFixed(1)}</span>
-            <span className="bm-product-reviews">({item.totalReviews ?? 0})</span>
             {item.totalSold ? (
-              <>
-                <div className="bm-product-sep" />
-                <span className="bm-product-sold">{item.totalSold} sold</span>
-              </>
-            ) : null}
+              <span className="bm-product-sold">({item.totalSold})</span>
+            ) : (
+              <span className="bm-product-reviews">({item.totalReviews ?? 0})</span>
+            )}
           </div>
         )}
         <div className="bm-product-prices">
-          <span className="bm-product-price">{fmt(item.discountPrice ?? item.price)}</span>
-          {item.discountPrice && item.price > item.discountPrice && (
-            <span className="bm-product-original">{fmt(item.price)}</span>
-          )}
-          {discountPct && <span className="bm-product-discount-tag">-{discountPct}%</span>}
-        </div>
-        <div className="bm-product-actions">
-          <button className="bm-add-cart" type="button" onClick={handleAddToCart}>
-            Add to Cart
-          </button>
-          <button
-            className="bm-quick-view"
-            type="button"
-            onClick={e => { e.stopPropagation(); navigate(`/product/${item.id}`) }}
-          >
-            View
+          <div className="bm-product-price-col">
+            <span className="bm-product-price" style={{ color: accent }}>{fmt(item.discountPrice ?? item.price)}</span>
+            {item.discountPrice && item.price > item.discountPrice && (
+              <span className="bm-product-original">{fmt(item.price)}</span>
+            )}
+          </div>
+          <button className="bm-add-cart-circle" type="button" style={{ background: accent }} onClick={handleAddToCart}>
+            <PlusIcon size={16} />
           </button>
         </div>
       </div>

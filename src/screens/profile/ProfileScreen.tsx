@@ -328,8 +328,8 @@ export default function ProfileScreen() {
 
   const displayName = [mergedUser.firstName, mergedUser.lastName].filter(Boolean).join(' ') || 'User'
   const initials = getInitials(mergedUser.firstName, mergedUser.lastName)
-  const isVerified = mergedUser.isEmailVerified === 'true' || (userData as Record<string, unknown>)?.isEmailVerified === true
-  const walletBalance = buyerData?.walletBalance ?? (userData as Record<string, unknown>)?.balance as number ?? 0
+  const isVerified = mergedUser.isEmailVerified === 'true' || (userData as unknown as Record<string, unknown>)?.isEmailVerified === true
+  const walletBalance = buyerData?.walletBalance ?? ((userData as unknown as Record<string, unknown>)?.balance as number ?? 0)
   const totalOrders = buyerData?.totalOrders ?? 0
   const loyaltyPoints = buyerData?.loyaltyPoints ?? 0
 

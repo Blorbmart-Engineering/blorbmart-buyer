@@ -100,7 +100,7 @@ function getInitials(name: string) {
 
 export function CartPage() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  useAuth()
   const { items, subtotal, updateQuantity, removeItem } = useCart()
 
   const [promoCode, setPromoCode] = useState('')

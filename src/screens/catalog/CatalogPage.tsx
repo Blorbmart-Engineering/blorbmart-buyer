@@ -268,7 +268,8 @@ export function CatalogPage() {
     return list
   }, [products, location.pathname, searchQuery, selectedCategories, minPrice, maxPrice, sortKey])
 
-  const title = pageTitle(location.pathname, categoryId, searchParam)
+  const _title = pageTitle(location.pathname, categoryId, searchParam)
+  void _title
   const activeFiltersCount = selectedCategories.length + (minPrice ? 1 : 0) + (maxPrice ? 1 : 0)
 
   return (

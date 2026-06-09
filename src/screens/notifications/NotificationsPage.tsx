@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc, writeBatch,
+  collection, deleteDoc, doc, getDocs, orderBy, query, writeBatch,
 } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useAuth } from '../../hooks/useFirebaseData'
