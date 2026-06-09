@@ -9,7 +9,7 @@ import { ProductCard } from '../../components/ProductCard'
 import { StarIcon, ClockIcon, TruckIcon } from '../../components/icons'
 
 type Store = {
-  id: string; storeName: string; logoUrl?: string; coverImageUrl?: string
+  id: string; vendorId?: string; storeName: string; logoUrl?: string; coverImageUrl?: string
   description?: string; rating?: number; totalRatings?: number
   deliveryTime?: number; deliveryFee?: number; category?: string
   isActive?: boolean; phone?: string; address?: string
@@ -123,13 +123,39 @@ export function StoreDetailsPage() {
         // Try vendors collection first, then stores
         let snap = await getDoc(doc(db, 'vendors', id))
         if (!snap.exists()) snap = await getDoc(doc(db, 'stores', id))
+
+        let vendorId = id
         if (snap.exists()) {
-          setStore({ id: snap.id, ...snap.data() } as Store)
+          const data = snap.data() as Record<string, unknown>
+          vendorId = (data['vendorId'] as string) ?? id
+          const name = (data['storeName'] ?? data['name'] ?? data['businessName']) as string | undefined
+          const logo = (data['logoUrl'] ?? data['logo'] ?? data['logoImageUrl'] ?? data['imageUrl']) as string | undefined
+          const cover = (data['coverImageUrl'] ?? data['coverImage'] ?? data['bannerUrl']) as string | undefined
+          setStore({
+            id: snap.id, vendorId,
+            storeName: name ?? 'Store',
+            logoUrl: logo,
+            coverImageUrl: cover,
+            description: data['description'] as string | undefined,
+            rating: data['rating'] !== undefined ? Number(data['rating']) : undefined,
+            totalRatings: data['totalRatings'] !== undefined ? Number(data['totalRatings']) : (data['totalReviews'] !== undefined ? Number(data['totalReviews']) : undefined),
+            deliveryTime: data['deliveryTime'] !== undefined ? Number(data['deliveryTime']) : undefined,
+            deliveryFee: data['deliveryFee'] !== undefined ? Number(data['deliveryFee']) : undefined,
+            category: (data['category'] ?? data['categoryName']) as string | undefined,
+            isActive: data['isActive'] as boolean | undefined,
+            phone: data['phone'] as string | undefined,
+            address: (data['address'] ?? data['lga']) as string | undefined,
+          })
         }
 
-        // Fetch store's products
-        const q = query(collection(db, 'products'), where('vendorId', '==', id), limit(20))
-        const prodSnap = await getDocs(q)
+        // Fetch store's products — by vendorId first, fall back to storeId (matches Flutter logic)
+        let prodSnap = await getDocs(query(collection(db, 'products'), where('vendorId', '==', vendorId), limit(20)))
+        if (prodSnap.empty && id !== vendorId) {
+          prodSnap = await getDocs(query(collection(db, 'products'), where('storeId', '==', id), limit(20)))
+        }
+        if (prodSnap.empty) {
+          prodSnap = await getDocs(query(collection(db, 'products'), where('storeId', '==', vendorId), limit(20)))
+        }
         setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() } as Product)))
 
         // Fetch store reviews
