@@ -5,9 +5,9 @@ import { useAuth, useUserData } from '../../hooks/useFirebaseData'
 import { createOrder } from '../../services/orderService'
 import { apiFetchAuth } from '../../lib/api'
 import {
-  calculateOrderPricing, getWalletBalance,
+  calculateOrderPricing, getWalletBalance, getDeliveryZones,
   initializePaystackCheckout, payForOrderWithWallet,
-  verifyPaystackCheckout, type CheckoutPricing,
+  verifyPaystackCheckout, type CheckoutPricing, type CampusLocation,
 } from '../../services/checkoutService'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
 import {
@@ -284,6 +284,12 @@ export function CheckoutPage() {
   // Delivery note
   const [note, setNote] = useState('')
 
+  // Delivery zone (campus vs off-campus)
+  const [deliveryZone, setDeliveryZone] = useState<'campus' | 'off_campus'>('off_campus')
+  const [campusLocations, setCampusLocations] = useState<CampusLocation[]>([])
+  const [campusLocationName, setCampusLocationName] = useState('')
+  const [campusDeliveryFee, setCampusDeliveryFee] = useState(300)
+
   // Payment
   const [paymentMethod, setPaymentMethod] = useState<PayMethod>('cash_on_delivery')
   const [walletBalance, setWalletBalance] = useState(0)
@@ -325,6 +331,18 @@ export function CheckoutPage() {
     load()
   }, [user?.uid])
 
+  // Load campus delivery zones
+  useEffect(() => {
+    getDeliveryZones()
+      .then(({ campusDeliveryFee, locations }) => {
+        setCampusDeliveryFee(campusDeliveryFee)
+        setCampusLocations(locations)
+        if (locations.length && !campusLocationName) setCampusLocationName(locations[0].name)
+      })
+      .catch(() => { /* fall back to off-campus only */ })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Load wallet balance
   useEffect(() => {
     if (user?.uid) {
@@ -359,6 +377,10 @@ export function CheckoutPage() {
       setError('Please select a delivery address.')
       return
     }
+    if (deliveryZone === 'campus' && !campusLocationName) {
+      setError('Please select your campus location.')
+      return
+    }
     try {
       setPlacing(true)
       setError('')
@@ -368,13 +390,23 @@ export function CheckoutPage() {
         items,
         customerName: fullName,
         phone: selectedAddress.phone,
-        address: {
-          street: selectedAddress.addressLine1,
-          city: selectedAddress.city,
-          state: selectedAddress.state,
-          landmark: selectedAddress.addressLine2 || '',
-          note,
-        },
+        address: deliveryZone === 'campus'
+          ? {
+              street: selectedAddress.addressLine1,
+              city: selectedAddress.city,
+              state: selectedAddress.state,
+              landmark: campusLocationName,
+              note,
+              deliveryZone: 'campus',
+            }
+          : {
+              street: selectedAddress.addressLine1,
+              city: selectedAddress.city,
+              state: selectedAddress.state,
+              landmark: selectedAddress.addressLine2 || '',
+              note,
+              deliveryZone: 'off_campus',
+            },
         paymentMethod,
       })
 
@@ -499,6 +531,51 @@ export function CheckoutPage() {
                 <div className="co-card-icon"><MapPinIcon size={16} /></div>
                 Delivery Address
               </div>
+
+              {/* On Campus / Off Campus toggle */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                {([
+                  { key: 'campus' as const, label: `On Campus (₦${campusDeliveryFee.toLocaleString()})` },
+                  { key: 'off_campus' as const, label: 'Off Campus' },
+                ]).map(opt => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setDeliveryZone(opt.key)}
+                    style={{
+                      flex: 1, padding: '10px 12px', borderRadius: 12, fontSize: 13, fontWeight: 700,
+                      cursor: 'pointer', fontFamily: 'Plus Jakarta Sans, sans-serif',
+                      border: `2px solid ${deliveryZone === opt.key ? 'var(--blue)' : 'var(--border)'}`,
+                      background: deliveryZone === opt.key ? 'var(--blue-light)' : '#fff',
+                      color: deliveryZone === opt.key ? 'var(--blue)' : 'var(--text)',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {deliveryZone === 'campus' && (
+                <div style={{ marginBottom: 16 }}>
+                  <label className="co-label">Campus Location</label>
+                  {campusLocations.length ? (
+                    <select
+                      className="co-input"
+                      value={campusLocationName}
+                      onChange={e => setCampusLocationName(e.target.value)}
+                    >
+                      {campusLocations.map(loc => (
+                        <option key={loc.id} value={loc.name}>{loc.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p style={{ fontSize: 13, color: 'var(--text-3)' }}>No campus locations available yet. Please choose Off Campus.</p>
+                  )}
+                  <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6 }}>
+                    Flat delivery fee of ₦{campusDeliveryFee.toLocaleString()} applies for any on-campus order.
+                  </p>
+                </div>
+              )}
 
               {loadingAddrs ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

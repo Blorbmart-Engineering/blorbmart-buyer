@@ -10,6 +10,21 @@ export type CheckoutPricing = {
   addressNotes?: string
 }
 
+export type CampusLocation = { id: string; name: string; price: number }
+
+export async function getDeliveryZones() {
+  const response = await apiFetch('/api/platform/delivery-landmarks')
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(payload?.message || 'Failed to load delivery locations')
+  }
+  return {
+    campusDeliveryFee: Number(payload?.data?.campusDeliveryFee ?? 300),
+    addressNotes: String(payload?.data?.addressNotes || ''),
+    locations: (payload?.data?.landmarks || []) as CampusLocation[],
+  }
+}
+
 export async function getWalletBalance(userId: string) {
   const response = await apiFetch(`/api/wallet/${userId}`)
   const payload = await response.json().catch(() => ({}))

@@ -15,6 +15,7 @@ type CheckoutInput = {
     state: string
     landmark?: string
     note?: string
+    deliveryZone?: 'campus' | 'off_campus'
   }
   paymentMethod: 'cash_on_delivery' | 'wallet' | 'paystack'
 }
@@ -87,6 +88,7 @@ export async function createOrder(input: CheckoutInput) {
       state: input.address.state,
       landmark: input.address.landmark || input.address.note || '',
       addressLine2: input.address.note || '',
+      deliveryZone: input.address.deliveryZone || 'off_campus',
     },
     deliveryAddress: {
       street: input.address.street,
@@ -94,6 +96,7 @@ export async function createOrder(input: CheckoutInput) {
       state: input.address.state,
       landmark: input.address.landmark || input.address.note || '',
       note: input.address.note || '',
+      deliveryZone: input.address.deliveryZone || 'off_campus',
     },
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
