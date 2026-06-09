@@ -312,8 +312,10 @@ export function ProductDetailsPage() {
   const price = (product?.discountPrice ?? product?.price ?? 0) + (selectedVariant?.additionalPrice ?? 0)
   const oldPrice = (!selectedVariant && product?.discountPrice) ? product?.price : undefined
   const discountPct = oldPrice ? Math.round(((oldPrice - price) / oldPrice) * 100) : null
-  const stock = selectedVariant ? selectedVariant.stockQuantity : (product?.stockQuantity ?? 0)
-  const stockClass = stock === 0 ? 'out' : stock <= 5 ? 'low' : ''
+  // undefined stockQuantity = made-to-order (food), treat as unlimited
+  const stock = selectedVariant ? selectedVariant.stockQuantity : product?.stockQuantity
+  const isOutOfStock = stock !== undefined && stock === 0
+  const stockClass = isOutOfStock ? 'out' : (stock !== undefined && stock <= 5) ? 'low' : ''
 
   const handleAddToCart = () => {
     if (!product) return
@@ -471,11 +473,13 @@ export function ProductDetailsPage() {
                     {discountPct && <div className="pd-off-badge">{discountPct}% OFF</div>}
                   </div>
                   <div className={`pd-stock ${stockClass}`}>
-                    {stock === 0
+                    {isOutOfStock
                       ? <><strong>Out of stock</strong></>
-                      : stock <= 5
-                        ? <><strong>{stock} left</strong> — order soon!</>
-                        : <><strong>{stock}</strong> in stock</>
+                      : stock === undefined
+                        ? <><strong>Available</strong></>
+                        : stock <= 5
+                          ? <><strong>{stock} left</strong> — order soon!</>
+                          : <><strong>{stock}</strong> in stock</>
                     }
                   </div>
                 </div>
@@ -510,16 +514,16 @@ export function ProductDetailsPage() {
                   <div className="pd-stepper">
                     <button type="button" onClick={() => setQty(v => Math.max(1, v - 1))} disabled={qty <= 1}>−</button>
                     <strong>{qty}</strong>
-                    <button type="button" onClick={() => setQty(v => Math.min(stock || 99, v + 1))} disabled={stock > 0 && qty >= stock}>+</button>
+                    <button type="button" onClick={() => setQty(v => Math.min(stock ?? 99, v + 1))} disabled={stock !== undefined && qty >= stock}>+</button>
                   </div>
                 </div>
 
                 {/* CTA buttons (desktop) */}
                 <div className="pd-cta-row">
-                  <button className="pd-cta-btn cart" type="button" onClick={handleAddToCart} disabled={stock === 0}>
+                  <button className="pd-cta-btn cart" type="button" onClick={handleAddToCart} disabled={isOutOfStock}>
                     Add to Cart
                   </button>
-                  <button className="pd-cta-btn buy" type="button" onClick={handleBuyNow} disabled={stock === 0}>
+                  <button className="pd-cta-btn buy" type="button" onClick={handleBuyNow} disabled={isOutOfStock}>
                     Buy Now
                   </button>
                 </div>
@@ -666,10 +670,10 @@ export function ProductDetailsPage() {
 
             {/* Mobile fixed CTA */}
             <div className="pd-mobile-footer">
-              <button className="pd-cta-btn cart" type="button" onClick={handleAddToCart} disabled={stock === 0}>
+              <button className="pd-cta-btn cart" type="button" onClick={handleAddToCart} disabled={isOutOfStock}>
                 Add to Cart
               </button>
-              <button className="pd-cta-btn buy" type="button" onClick={handleBuyNow} disabled={stock === 0}>
+              <button className="pd-cta-btn buy" type="button" onClick={handleBuyNow} disabled={isOutOfStock}>
                 Buy Now
               </button>
             </div>

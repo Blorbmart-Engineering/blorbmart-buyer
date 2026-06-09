@@ -186,7 +186,18 @@ const css = `
   .wl-spinner { width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; animation:spin .7s linear infinite; }
 `
 
-// Paystack inline JS v2 type declaration
+declare global {
+  interface Window {
+    PaystackPop: new () => {
+      newTransaction(opts: {
+        access_code: string
+        onSuccess: (transaction: { reference: string }) => void
+        onCancel: () => void
+      }): void
+    }
+  }
+}
+
 // ─── Main Component ─────────────────────────────────────────────────────────────
 export default function WalletScreen() {
   const navigate = useNavigate()
