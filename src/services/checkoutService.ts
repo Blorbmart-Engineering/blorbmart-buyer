@@ -13,7 +13,7 @@ export type CheckoutPricing = {
 export type CampusLocation = { id: string; name: string; price: number }
 
 export async function getDeliveryZones() {
-  const response = await apiFetch('/api/platform/delivery-landmarks')
+  const response = await apiFetch('/api/delivery-landmarks')
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
     throw new Error(payload?.message || 'Failed to load delivery locations')
