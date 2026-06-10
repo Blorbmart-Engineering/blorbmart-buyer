@@ -145,10 +145,10 @@ export function PWAInstallBanner() {
           <img src="/pwa-192x192.png" alt="Blorbmart" />
         </div>
         <div className="pwa-install-text">
-          <strong>Add to Home Screen</strong>
+          <strong>Install Blorbmart</strong>
           <span>Shop faster with the Blorbmart app</span>
         </div>
-        <button className="pwa-install-btn add" onClick={install}>Add</button>
+        <button className="pwa-install-btn add" onClick={install}>Install</button>
         <button className="pwa-install-btn close" onClick={dismiss} aria-label="Dismiss">×</button>
       </div>
     </>
