@@ -12,7 +12,7 @@ import {
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
 import {
   HomeIcon, BuildingIcon, BriefcaseIcon, MapPinIcon, CreditCardIcon, CartIcon,
-  PhoneIcon, EditIcon, CashIcon, WalletIcon, ReceiptIcon, LockIcon,
+  PhoneIcon, EditIcon, WalletIcon, ReceiptIcon, LockIcon,
 } from '../../components/icons'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -21,7 +21,7 @@ type Address = {
   city: string; state: string; phone: string; isDefault: boolean
 }
 
-type PayMethod = 'cash_on_delivery' | 'wallet' | 'paystack'
+type PayMethod = 'wallet' | 'paystack'
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(v)
@@ -289,10 +289,12 @@ export function CheckoutPage() {
   const [campusLocations, setCampusLocations] = useState<CampusLocation[]>([])
   const [campusLocationName, setCampusLocationName] = useState('')
   const [campusDeliveryFee, setCampusDeliveryFee] = useState(300)
+  const [defaultDeliveryFee, setDefaultDeliveryFee] = useState(500)
+  const [serviceFee, setServiceFee] = useState(0)
   const [campusPhone, setCampusPhone] = useState('')
 
   // Payment
-  const [paymentMethod, setPaymentMethod] = useState<PayMethod>('cash_on_delivery')
+  const [paymentMethod, setPaymentMethod] = useState<PayMethod>('wallet')
   const [walletBalance, setWalletBalance] = useState(0)
   const [promoCode, setPromoCode] = useState('')
   const [pricing, setPricing] = useState<CheckoutPricing | null>(null)
@@ -311,7 +313,9 @@ export function CheckoutPage() {
   }, [user?.email, userData?.firstName, userData?.lastName])
 
   const selectedAddress = addresses.find(a => a.docId === selectedAddrId)
-  const total = pricing?.totalAmount ?? subtotal
+  const estimatedDeliveryFee = deliveryZone === 'campus' ? campusDeliveryFee : defaultDeliveryFee
+  const estimatedTotal = subtotal + estimatedDeliveryFee + serviceFee
+  const total = pricing?.totalAmount ?? estimatedTotal
   const deliveryReady = deliveryZone === 'campus'
     ? Boolean(campusLocationName) && Boolean(campusPhone.trim())
     : Boolean(selectedAddress)
@@ -338,8 +342,10 @@ export function CheckoutPage() {
   // Load campus delivery zones
   useEffect(() => {
     getDeliveryZones()
-      .then(({ campusDeliveryFee, locations }) => {
+      .then(({ campusDeliveryFee, defaultDeliveryFee, serviceFee, locations }) => {
         setCampusDeliveryFee(campusDeliveryFee)
+        setDefaultDeliveryFee(defaultDeliveryFee)
+        setServiceFee(serviceFee)
         setCampusLocations(locations)
         if (locations.length && !campusLocationName) setCampusLocationName(locations[0].name)
       })
@@ -433,19 +439,13 @@ export function CheckoutPage() {
         return
       }
 
-      if (paymentMethod === 'paystack') {
-        const checkout = await initializePaystackCheckout(result.orderId, promoCode.trim() || undefined)
-        window.open(checkout.authorization_url, '_blank', 'noopener,noreferrer')
-        setPaystackUrl(checkout.authorization_url)
-        setPaystackRef(checkout.reference)
-        setPaystackOrderId(result.orderId)
-        setShowPaystackModal(true)
-        return
-      }
-
-      // Cash on delivery
-      clearCart()
-      navigate(`/track?orderId=${encodeURIComponent(result.orderId)}`)
+      // Paystack
+      const checkout = await initializePaystackCheckout(result.orderId, promoCode.trim() || undefined)
+      window.open(checkout.authorization_url, '_blank', 'noopener,noreferrer')
+      setPaystackUrl(checkout.authorization_url)
+      setPaystackRef(checkout.reference)
+      setPaystackOrderId(result.orderId)
+      setShowPaystackModal(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to place your order. Please try again.')
     } finally {
@@ -479,8 +479,7 @@ export function CheckoutPage() {
   const walletSufficient = walletBalance >= total
   const ctaLabel = placing ? 'Processing…'
     : paymentMethod === 'wallet' ? `Pay ₦${Math.round(total).toLocaleString()} with Wallet`
-    : paymentMethod === 'paystack' ? 'Pay with Paystack →'
-    : 'Place Order'
+    : 'Pay with Paystack →'
 
   if (!items.length) {
     return (
@@ -672,12 +671,6 @@ export function CheckoutPage() {
               <div className="co-pay-list">
                 {([
                   {
-                    key: 'cash_on_delivery' as PayMethod,
-                    icon: CashIcon, iconClass: 'cod',
-                    title: 'Cash on Delivery',
-                    sub: 'Pay when your order arrives',
-                  },
-                  {
                     key: 'wallet' as PayMethod,
                     icon: WalletIcon, iconClass: 'wallet',
                     title: 'Wallet',
@@ -782,10 +775,16 @@ export function CheckoutPage() {
                 )}
               </>
             ) : (
-              <div className="co-sum-row">
-                <span>Delivery + fees</span>
-                <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Calculated on order</span>
-              </div>
+              <>
+                <div className="co-sum-row">
+                  <span>Delivery fee {deliveryZone === 'campus' ? '(on campus)' : '(estimated)'}</span>
+                  <span>{estimatedDeliveryFee === 0 ? 'Free' : fmt(estimatedDeliveryFee)}</span>
+                </div>
+                <div className="co-sum-row">
+                  <span>Service fee</span>
+                  <span>{fmt(serviceFee)}</span>
+                </div>
+              </>
             )}
 
             <div className="co-sum-divider" />

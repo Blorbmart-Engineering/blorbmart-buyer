@@ -17,7 +17,7 @@ type CheckoutInput = {
     note?: string
     deliveryZone?: 'campus' | 'off_campus'
   }
-  paymentMethod: 'cash_on_delivery' | 'wallet' | 'paystack'
+  paymentMethod: 'wallet' | 'paystack'
 }
 
 const groupItemsByVendor = (items: CartItem[]) => {

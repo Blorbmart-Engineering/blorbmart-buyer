@@ -20,6 +20,8 @@ export async function getDeliveryZones() {
   }
   return {
     campusDeliveryFee: Number(payload?.data?.campusDeliveryFee ?? 300),
+    defaultDeliveryFee: Number(payload?.data?.defaultDeliveryFee ?? 500),
+    serviceFee: Number(payload?.data?.serviceFee ?? 0),
     addressNotes: String(payload?.data?.addressNotes || ''),
     locations: (payload?.data?.landmarks || []) as CampusLocation[],
   }
