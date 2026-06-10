@@ -289,6 +289,7 @@ export function CheckoutPage() {
   const [campusLocations, setCampusLocations] = useState<CampusLocation[]>([])
   const [campusLocationName, setCampusLocationName] = useState('')
   const [campusDeliveryFee, setCampusDeliveryFee] = useState(300)
+  const [campusPhone, setCampusPhone] = useState('')
 
   // Payment
   const [paymentMethod, setPaymentMethod] = useState<PayMethod>('cash_on_delivery')
@@ -311,7 +312,10 @@ export function CheckoutPage() {
 
   const selectedAddress = addresses.find(a => a.docId === selectedAddrId)
   const total = pricing?.totalAmount ?? subtotal
-  const step = !selectedAddress ? 1 : 2
+  const deliveryReady = deliveryZone === 'campus'
+    ? Boolean(campusLocationName) && Boolean(campusPhone.trim())
+    : Boolean(selectedAddress)
+  const step = !deliveryReady ? 1 : 2
 
   // Load saved addresses from backend API
   useEffect(() => {
@@ -373,12 +377,21 @@ export function CheckoutPage() {
   }
 
   const handlePlaceOrder = async () => {
-    if (!user || !items.length || !selectedAddress) {
-      setError('Please select a delivery address.')
+    if (!user || !items.length) {
+      setError('Your cart is empty.')
       return
     }
-    if (deliveryZone === 'campus' && !campusLocationName) {
-      setError('Please select your campus location.')
+    if (deliveryZone === 'campus') {
+      if (!campusLocationName) {
+        setError('Please select your campus location.')
+        return
+      }
+      if (!campusPhone.trim()) {
+        setError('Please enter a phone number for delivery.')
+        return
+      }
+    } else if (!selectedAddress) {
+      setError('Please select a delivery address.')
       return
     }
     try {
@@ -389,21 +402,21 @@ export function CheckoutPage() {
         user,
         items,
         customerName: fullName,
-        phone: selectedAddress.phone,
+        phone: deliveryZone === 'campus' ? campusPhone.trim() : (selectedAddress?.phone || ''),
         address: deliveryZone === 'campus'
           ? {
-              street: selectedAddress.addressLine1,
-              city: selectedAddress.city,
-              state: selectedAddress.state,
+              street: campusLocationName,
+              city: 'Campus',
+              state: selectedAddress?.state || '',
               landmark: campusLocationName,
               note,
               deliveryZone: 'campus',
             }
           : {
-              street: selectedAddress.addressLine1,
-              city: selectedAddress.city,
-              state: selectedAddress.state,
-              landmark: selectedAddress.addressLine2 || '',
+              street: selectedAddress!.addressLine1,
+              city: selectedAddress!.city,
+              state: selectedAddress!.state,
+              landmark: selectedAddress!.addressLine2 || '',
               note,
               deliveryZone: 'off_campus',
             },
@@ -571,13 +584,21 @@ export function CheckoutPage() {
                   ) : (
                     <p style={{ fontSize: 13, color: 'var(--text-3)' }}>No campus locations available yet. Please choose Off Campus.</p>
                   )}
-                  <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6 }}>
+                  <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6, marginBottom: 12 }}>
                     Flat delivery fee of ₦{campusDeliveryFee.toLocaleString()} applies for any on-campus order.
                   </p>
+                  <label className="co-label">Phone Number</label>
+                  <input
+                    className="co-input"
+                    type="tel"
+                    placeholder="e.g. 080xxxxxxxx"
+                    value={campusPhone}
+                    onChange={e => setCampusPhone(e.target.value)}
+                  />
                 </div>
               )}
 
-              {loadingAddrs ? (
+              {deliveryZone === 'off_campus' && (loadingAddrs ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {[...Array(2)].map((_, i) => <div key={i} className="bm-skeleton" style={{ height: 72, borderRadius: 12 }} />)}
                 </div>
@@ -623,7 +644,7 @@ export function CheckoutPage() {
                     Add New Address
                   </button>
                 </>
-              )}
+              ))}
             </div>
 
             {/* Delivery note */}
@@ -774,7 +795,14 @@ export function CheckoutPage() {
             </div>
 
             {/* Delivery address preview */}
-            {selectedAddress && (
+            {deliveryZone === 'campus' ? (
+              campusLocationName && (
+                <div style={{ marginTop: 14, background: 'var(--bg)', borderRadius: 10, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Delivering to</div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{campusLocationName} (On Campus)</div>
+                </div>
+              )
+            ) : selectedAddress && (
               <div style={{ marginTop: 14, background: 'var(--bg)', borderRadius: 10, padding: '10px 12px' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Delivering to</div>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{selectedAddress.addressLine1}</div>
@@ -786,7 +814,7 @@ export function CheckoutPage() {
               className="co-place-btn"
               type="button"
               onClick={handlePlaceOrder}
-              disabled={placing || !selectedAddress}
+              disabled={placing || !deliveryReady}
             >
               {ctaLabel}
             </button>
@@ -804,7 +832,7 @@ export function CheckoutPage() {
             className="co-place-btn"
             type="button"
             onClick={handlePlaceOrder}
-            disabled={placing || !selectedAddress}
+            disabled={placing || !deliveryReady}
             style={{ marginTop: 0 }}
           >
             {ctaLabel}
