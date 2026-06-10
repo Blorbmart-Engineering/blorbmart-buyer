@@ -251,8 +251,8 @@ function PaystackModal({
           </div>
         ) : (
           <div className="co-paystack-sub">
-            <strong>Step 1:</strong> A Paystack payment page opened in a new browser tab. Switch to that tab and pay.<br /><br />
-            <strong>Step 2:</strong> Once you're done, come back to <strong>this tab</strong> and tap <strong>"I've Paid"</strong> below.
+            <strong>Step 1:</strong> A Paystack payment page opened in a <strong>new browser tab</strong>. Switch to that tab and pay.<br /><br />
+            <strong>Step 2:</strong> After paying, that tab will close itself. Come back to <strong>this tab</strong> (the one you're reading right now) and tap <strong>"I've Paid"</strong> below.
           </div>
         )}
 
