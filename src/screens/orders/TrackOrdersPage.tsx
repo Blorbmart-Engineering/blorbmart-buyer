@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   collection, doc, getDocs, onSnapshot,
-  orderBy, query, where,
+  query, where,
 } from 'firebase/firestore'
 import type { Unsubscribe } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
@@ -483,9 +483,15 @@ export function TrackOrdersPage() {
     setLoading(true)
     try {
       const snap = await getDocs(
-        query(collection(db, 'orders'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'))
+        query(collection(db, 'orders'), where('userId', '==', user.uid))
       )
-      const loaded = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<Order, 'id'>) }))
+      const loaded = snap.docs
+        .map(d => ({ id: d.id, ...(d.data() as Omit<Order, 'id'>) }))
+        .sort((a, b) => {
+          const aTime = a.createdAt?.seconds ?? 0
+          const bTime = b.createdAt?.seconds ?? 0
+          return bTime - aTime
+        })
       setOrders(loaded)
       // Auto-select if URL param present
       const target = urlOrderId
