@@ -291,7 +291,8 @@ export function CheckoutPage() {
   const [campusDeliveryFee, setCampusDeliveryFee] = useState(300)
   const [defaultDeliveryFee, setDefaultDeliveryFee] = useState(500)
   const [serviceFee, setServiceFee] = useState(0)
-  const [campusPhone, setCampusPhone] = useState('')
+  const [contactPhone, setContactPhone] = useState('')
+  const [phoneTouched, setPhoneTouched] = useState(false)
 
   // Payment
   const [paymentMethod, setPaymentMethod] = useState<PayMethod>('wallet')
@@ -316,9 +317,9 @@ export function CheckoutPage() {
   const estimatedDeliveryFee = deliveryZone === 'campus' ? campusDeliveryFee : defaultDeliveryFee
   const estimatedTotal = subtotal + estimatedDeliveryFee + serviceFee
   const total = pricing?.totalAmount ?? estimatedTotal
-  const deliveryReady = deliveryZone === 'campus'
-    ? Boolean(campusLocationName) && Boolean(campusPhone.trim())
-    : Boolean(selectedAddress)
+  const deliveryReady = Boolean(contactPhone.trim()) && (deliveryZone === 'campus'
+    ? Boolean(campusLocationName)
+    : Boolean(selectedAddress))
   const step = !deliveryReady ? 1 : 2
 
   // Load saved addresses from backend API
@@ -338,6 +339,13 @@ export function CheckoutPage() {
     }
     load()
   }, [user?.uid])
+
+  // Prefill contact phone from the selected saved address (until the user edits it)
+  useEffect(() => {
+    if (!phoneTouched && selectedAddress?.phone) {
+      setContactPhone(selectedAddress.phone)
+    }
+  }, [selectedAddress, phoneTouched])
 
   // Load campus delivery zones
   useEffect(() => {
@@ -387,13 +395,13 @@ export function CheckoutPage() {
       setError('Your cart is empty.')
       return
     }
+    if (!contactPhone.trim()) {
+      setError('Please enter a phone number so the driver can reach you.')
+      return
+    }
     if (deliveryZone === 'campus') {
       if (!campusLocationName) {
         setError('Please select your campus location.')
-        return
-      }
-      if (!campusPhone.trim()) {
-        setError('Please enter a phone number for delivery.')
         return
       }
     } else if (!selectedAddress) {
@@ -408,7 +416,7 @@ export function CheckoutPage() {
         user,
         items,
         customerName: fullName,
-        phone: deliveryZone === 'campus' ? campusPhone.trim() : (selectedAddress?.phone || ''),
+        phone: contactPhone.trim(),
         address: deliveryZone === 'campus'
           ? {
               street: campusLocationName,
@@ -583,19 +591,25 @@ export function CheckoutPage() {
                   ) : (
                     <p style={{ fontSize: 13, color: 'var(--text-3)' }}>No campus locations available yet. Please choose Off Campus.</p>
                   )}
-                  <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6, marginBottom: 12 }}>
+                  <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6 }}>
                     Flat delivery fee of ₦{campusDeliveryFee.toLocaleString()} applies for any on-campus order.
                   </p>
-                  <label className="co-label">Phone Number</label>
-                  <input
-                    className="co-input"
-                    type="tel"
-                    placeholder="e.g. 080xxxxxxxx"
-                    value={campusPhone}
-                    onChange={e => setCampusPhone(e.target.value)}
-                  />
                 </div>
               )}
+
+              <div style={{ marginBottom: 16 }}>
+                <label className="co-label">Contact Phone Number</label>
+                <input
+                  className="co-input"
+                  type="tel"
+                  placeholder="e.g. 080xxxxxxxx"
+                  value={contactPhone}
+                  onChange={e => { setContactPhone(e.target.value); setPhoneTouched(true) }}
+                />
+                <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 6 }}>
+                  The delivery rider will call this number when they arrive.
+                </p>
+              </div>
 
               {deliveryZone === 'off_campus' && (loadingAddrs ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
