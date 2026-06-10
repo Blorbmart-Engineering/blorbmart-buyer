@@ -234,34 +234,43 @@ function AddAddressModal({
 
 // ─── Paystack Modal ───────────────────────────────────────────────────────────
 function PaystackModal({
-  authUrl, onVerify, onCancel, verifying,
+  authUrl, onVerify, onCancel, verifying, popupBlocked,
 }: {
-  authUrl: string; onVerify: () => void; onCancel: () => void; verifying: boolean
+  authUrl: string; onVerify: () => void; onCancel: () => void; verifying: boolean; popupBlocked: boolean
 }) {
   return (
     <div className="co-modal-overlay">
       <div className="co-paystack-modal">
         <div className="co-paystack-icon"><CreditCardIcon /></div>
         <div className="co-paystack-title">Complete Payment</div>
-        <div className="co-paystack-sub">
-          A Paystack payment page has opened in a new tab.<br />
-          Complete your payment there, then click <strong>"I've Paid"</strong> below to confirm your order.
-        </div>
+
+        {popupBlocked ? (
+          <div className="co-paystack-sub">
+            Your browser blocked the payment page from opening.<br />
+            Tap the button below to open it.
+          </div>
+        ) : (
+          <div className="co-paystack-sub">
+            <strong>Step 1:</strong> A Paystack payment page opened in a new browser tab. Switch to that tab and pay.<br /><br />
+            <strong>Step 2:</strong> Once you're done, come back to <strong>this tab</strong> and tap <strong>"I've Paid"</strong> below.
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => window.open(authUrl, '_blank', 'noopener,noreferrer')}
+          className="co-paystack-verify"
+          style={{ marginBottom: 8 }}
+        >
+          {popupBlocked ? '↗ Open Payment Page' : '↗ Reopen Payment Page'}
+        </button>
+
         <button className="co-paystack-verify" type="button" onClick={onVerify} disabled={verifying}>
           {verifying ? 'Verifying…' : "✓ I've Paid — Confirm Order"}
         </button>
         <button className="co-paystack-cancel" type="button" onClick={onCancel}>
           Not yet — Go Back
         </button>
-        <div style={{ marginTop: 12 }}>
-          <button
-            type="button"
-            onClick={() => window.open(authUrl, '_blank', 'noopener,noreferrer')}
-            style={{ background: 'none', border: 'none', color: 'var(--blue)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'Plus Jakarta Sans, sans-serif' }}
-          >
-            Reopen payment page ↗
-          </button>
-        </div>
       </div>
     </div>
   )
@@ -308,6 +317,7 @@ export function CheckoutPage() {
   const [paystackOrderId, setPaystackOrderId] = useState('')
   const [verifying, setVerifying] = useState(false)
   const [showPaystackModal, setShowPaystackModal] = useState(false)
+  const [popupBlocked, setPopupBlocked] = useState(false)
 
   const fullName = useMemo(() => {
     return [userData?.firstName, userData?.lastName].filter(Boolean).join(' ').trim() || user?.email || 'Buyer'
@@ -449,7 +459,8 @@ export function CheckoutPage() {
 
       // Paystack
       const checkout = await initializePaystackCheckout(result.orderId, promoCode.trim() || undefined)
-      window.open(checkout.authorization_url, '_blank', 'noopener,noreferrer')
+      const newTab = window.open(checkout.authorization_url, '_blank', 'noopener,noreferrer')
+      setPopupBlocked(!newTab)
       setPaystackUrl(checkout.authorization_url)
       setPaystackRef(checkout.reference)
       setPaystackOrderId(result.orderId)
@@ -870,6 +881,7 @@ export function CheckoutPage() {
             onVerify={handleVerifyPaystack}
             onCancel={() => { setShowPaystackModal(false); navigate(`/track?orderId=${encodeURIComponent(paystackOrderId)}`) }}
             verifying={verifying}
+            popupBlocked={popupBlocked}
           />
         </div>
       )}
