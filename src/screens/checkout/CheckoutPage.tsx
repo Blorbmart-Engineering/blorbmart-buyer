@@ -5,7 +5,7 @@ import { useAuth, useUserData } from '../../hooks/useFirebaseData'
 import { createOrder } from '../../services/orderService'
 import { apiFetchAuth } from '../../lib/api'
 import {
-  calculateOrderPricing, getWalletBalance, getDeliveryZones,
+  calculateOrderPricing, getDeliveryZones,
   initializePaystackCheckout, payForOrderWithWallet,
   verifyPaystackCheckout, type CheckoutPricing, type CampusLocation,
 } from '../../services/checkoutService'
@@ -294,7 +294,7 @@ export function CheckoutPage() {
   const [note, setNote] = useState('')
 
   // Delivery zone (campus vs off-campus)
-  const [deliveryZone, setDeliveryZone] = useState<'campus' | 'off_campus'>('off_campus')
+  const [deliveryZone, setDeliveryZone] = useState<'campus' | 'off_campus'>('campus')
   const [campusLocations, setCampusLocations] = useState<CampusLocation[]>([])
   const [campusLocationName, setCampusLocationName] = useState('')
   const [campusDeliveryFee, setCampusDeliveryFee] = useState(300)
@@ -304,8 +304,7 @@ export function CheckoutPage() {
   const [phoneTouched, setPhoneTouched] = useState(false)
 
   // Payment
-  const [paymentMethod, setPaymentMethod] = useState<PayMethod>('wallet')
-  const [walletBalance, setWalletBalance] = useState(0)
+  const [paymentMethod, setPaymentMethod] = useState<PayMethod>('paystack')
   const [promoCode, setPromoCode] = useState('')
   const [pricing, setPricing] = useState<CheckoutPricing | null>(null)
   const [placing, setPlacing] = useState(false)
@@ -370,13 +369,6 @@ export function CheckoutPage() {
       .catch(() => { /* fall back to off-campus only */ })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // Load wallet balance
-  useEffect(() => {
-    if (user?.uid) {
-      getWalletBalance(user.uid).then(setWalletBalance).catch(() => setWalletBalance(0))
-    }
-  }, [user?.uid])
 
   // Save new address via backend API
   const handleSaveAddress = async (addr: Omit<Address, 'docId' | 'isDefault'>) => {
@@ -495,7 +487,6 @@ export function CheckoutPage() {
     return acc
   }, {})
 
-  const walletSufficient = walletBalance >= total
   const ctaLabel = placing ? 'Processing…'
     : paymentMethod === 'wallet' ? `Pay ₦${Math.round(total).toLocaleString()} with Wallet`
     : 'Pay with Paystack →'
@@ -699,8 +690,9 @@ export function CheckoutPage() {
                     key: 'wallet' as PayMethod,
                     icon: WalletIcon, iconClass: 'wallet',
                     title: 'Wallet',
-                    sub: `Balance: ${fmt(walletBalance)}`,
-                    badge: walletSufficient ? { label: 'Sufficient', cls: 'ok' } : { label: 'Low balance', cls: 'warn' },
+                    sub: 'Wallet funding is coming soon',
+                    badge: { label: 'Coming soon', cls: 'warn' },
+                    disabled: true,
                   },
                   {
                     key: 'paystack' as PayMethod,
@@ -712,7 +704,8 @@ export function CheckoutPage() {
                   <div
                     key={opt.key}
                     className={`co-pay-card ${paymentMethod === opt.key ? 'selected' : ''}`}
-                    onClick={() => setPaymentMethod(opt.key)}
+                    onClick={() => { if (!('disabled' in opt && opt.disabled)) setPaymentMethod(opt.key) }}
+                    style={'disabled' in opt && opt.disabled ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
                   >
                     <div className={`co-pay-icon ${opt.iconClass}`}><opt.icon /></div>
                     <div style={{ flex: 1, minWidth: 0 }}>
