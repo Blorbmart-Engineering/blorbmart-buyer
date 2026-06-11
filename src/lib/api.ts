@@ -1,6 +1,6 @@
 import { auth } from './firebase'
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://blorbmart.onrender.com').replace(/\/+$/, '')
+const API_BASE_URL = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://blorbmart-tr1i.onrender.com').replace(/\/+$/, '')
 
 export function apiUrl(path: string) {
   return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`

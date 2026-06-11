@@ -16,6 +16,7 @@ type Product = {
   categoryName?: string
   storeName?: string
   vendorId?: string
+  storeId?: string
 }
 
 const fmt = (v: number) =>
@@ -54,6 +55,7 @@ export function ProductCard({
       image: item.images?.[0] ?? '',
       storeName: item.storeName ?? '',
       vendorId: item.vendorId,
+      storeId: item.storeId,
       categoryId: item.categoryId,
     }
     const result = addItem(cartItem)

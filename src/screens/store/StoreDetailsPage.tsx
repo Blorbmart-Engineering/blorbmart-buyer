@@ -126,10 +126,12 @@ export function StoreDetailsPage() {
         if (!snap.exists()) snap = await getDoc(doc(db, 'stores', id))
 
         let vendorId = id
+        let resolvedStoreName = 'Store'
         if (snap.exists()) {
           const data = snap.data() as Record<string, unknown>
           vendorId = (data['vendorId'] as string) ?? id
           const name = (data['storeName'] ?? data['name'] ?? data['businessName']) as string | undefined
+          resolvedStoreName = name ?? 'Store'
           const logo = (data['logoUrl'] ?? data['logo'] ?? data['logoImageUrl'] ?? data['imageUrl']) as string | undefined
           const cover = (data['coverImageUrl'] ?? data['coverImage'] ?? data['bannerUrl']) as string | undefined
           setStore({
@@ -157,7 +159,16 @@ export function StoreDetailsPage() {
         if (prodSnap.empty) {
           prodSnap = await getDocs(query(collection(db, 'products'), where('storeId', '==', vendorId), limit(20)))
         }
-        setProducts(prodSnap.docs.map(d => ({ id: d.id, ...d.data() } as Product)))
+        setProducts(prodSnap.docs.map(d => {
+          const data = d.data() as Record<string, unknown>
+          return {
+            id: d.id,
+            ...data,
+            vendorId: (data.vendorId as string) || vendorId,
+            storeId: snap.exists() ? snap.id : id,
+            storeName: (data.storeName as string) || (data.name as string) || resolvedStoreName,
+          } as Product
+        }))
 
         // Fetch store reviews
         try {

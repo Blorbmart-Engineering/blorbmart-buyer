@@ -327,7 +327,7 @@ export function ProductDetailsPage() {
     const cartItem = {
       id: product.id, name: selectedVariant ? `${product.name} (${selectedVariant.name})` : product.name,
       price, image: images[0], storeName: product.storeName, vendorId: product.vendorId,
-      categoryId: product.categoryId, categoryName: product.categoryName,
+      storeId: product.storeId, categoryId: product.categoryId, categoryName: product.categoryName,
     }
     const isFood = product.categoryId === 'food_drinks'
     const result = addItem(cartItem, qty)

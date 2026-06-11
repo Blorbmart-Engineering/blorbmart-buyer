@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../contexts/CartContext'
 import { useAuth, useUserData } from '../../hooks/useFirebaseData'
@@ -454,7 +454,7 @@ export function CheckoutPage() {
       const newTab = window.open(checkout.authorization_url, '_blank', 'noopener,noreferrer')
       setPopupBlocked(!newTab)
       setPaystackUrl(checkout.authorization_url)
-      setPaystackRef(checkout.reference)
+      setPaystackRef(checkout.paymentReference || checkout.reference)
       setPaystackOrderId(result.orderId)
       setShowPaystackModal(true)
     } catch (err) {
@@ -464,20 +464,45 @@ export function CheckoutPage() {
     }
   }
 
-  const handleVerifyPaystack = async () => {
-    setVerifying(true)
+  const handleVerifyPaystack = useCallback(async (options?: { silent?: boolean }) => {
+    if (!paystackRef || !paystackOrderId) return false
+    if (!options?.silent) setVerifying(true)
     try {
-      await verifyPaystackCheckout(paystackRef, paystackOrderId)
-      clearCart()
-      setShowPaystackModal(false)
-      navigate(`/track?orderId=${encodeURIComponent(paystackOrderId)}`)
+      let lastError: unknown = null
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          await verifyPaystackCheckout(paystackRef, paystackOrderId)
+          clearCart()
+          setShowPaystackModal(false)
+          navigate(`/track?orderId=${encodeURIComponent(paystackOrderId)}`)
+          return true
+        } catch (err) {
+          lastError = err
+          if (attempt < 2) {
+            await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)))
+          }
+        }
+      }
+      throw lastError
     } catch {
-      setError('Payment verification failed. Please contact support if money was deducted.')
-      setShowPaystackModal(false)
+      if (!options?.silent) {
+        setError('Payment verification failed. If money was deducted, keep this page open or contact support — we can verify from admin.')
+      }
+      return false
     } finally {
-      setVerifying(false)
+      if (!options?.silent) setVerifying(false)
     }
-  }
+  }, [clearCart, navigate, paystackOrderId, paystackRef])
+
+  // Auto-verify when the user returns from the Paystack tab
+  useEffect(() => {
+    if (!showPaystackModal || !paystackRef) return
+    const onFocus = () => {
+      void handleVerifyPaystack({ silent: true })
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [handleVerifyPaystack, showPaystackModal, paystackRef])
 
   // Group items by store for display
   const storeGroups = items.reduce<Record<string, typeof items>>((acc, item) => {
@@ -872,7 +897,12 @@ export function CheckoutPage() {
           <PaystackModal
             authUrl={paystackUrl}
             onVerify={handleVerifyPaystack}
-            onCancel={() => { setShowPaystackModal(false); navigate(`/track?orderId=${encodeURIComponent(paystackOrderId)}`) }}
+            onCancel={() => {
+              const leave = window.confirm(
+                'Payment is not confirmed yet. If you already paid on Paystack, stay on this page and tap "I\'ve Paid". Leave anyway?'
+              )
+              if (leave) setShowPaystackModal(false)
+            }}
             verifying={verifying}
             popupBlocked={popupBlocked}
           />

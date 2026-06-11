@@ -9,6 +9,7 @@ export type CartItem = {
   image?: string
   storeName?: string
   vendorId?: string
+  storeId?: string
   categoryId?: string
   categoryName?: string
   quantity: number
