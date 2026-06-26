@@ -3,16 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../contexts/CartContext'
 import { useAuth, useUserData } from '../../hooks/useFirebaseData'
 import { createOrder } from '../../services/orderService'
+import { getPreorderOptions, type PreorderOption, type PreorderOptions } from '../../services/preorderService'
 import { apiFetchAuth } from '../../lib/api'
 import {
   calculateOrderPricing, getDeliveryZones,
   initializePaystackCheckout, payForOrderWithWallet,
-  verifyPaystackCheckout, type CheckoutPricing, type CampusLocation,
+  verifyPaystackCheckout, notifyNewOrder, type CheckoutPricing, type CampusLocation,
 } from '../../services/checkoutService'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
 import {
   HomeIcon, BuildingIcon, BriefcaseIcon, MapPinIcon, CreditCardIcon, CartIcon,
-  PhoneIcon, EditIcon, WalletIcon, ReceiptIcon, LockIcon,
+  PhoneIcon, EditIcon, WalletIcon, ReceiptIcon, LockIcon, ClockIcon,
 } from '../../components/icons'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -142,6 +143,15 @@ const css = `
   .co-paystack-cancel { width: 100%; padding: 10px; background: none; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--text-2); font-family: 'Plus Jakarta Sans', sans-serif; }
 
   @keyframes slideUpModal { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  .co-preorder-banner { background: #fff7ed; border: 1.5px solid rgba(249,115,22,.25); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+  .co-preorder-title { font-size: 14px; font-weight: 800; color: #c2410c; margin-bottom: 4px; }
+  .co-preorder-sub { font-size: 12.5px; color: var(--text-2); line-height: 1.5; }
+  .co-preorder-options { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .co-preorder-option { border: 2px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: all .15s; }
+  .co-preorder-option.selected { border-color: #f97316; background: #fff7ed; }
+  .co-preorder-option-label { font-size: 14px; font-weight: 700; color: var(--text); }
+  .co-preorder-option-cutoff { font-size: 12px; color: var(--text-3); margin-top: 3px; }
 
   /* Mobile footer */
   .co-mobile-footer { display: none; position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--border); padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 40; }
@@ -281,7 +291,7 @@ export function CheckoutPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { userData } = useUserData(user?.uid)
-  const { items, subtotal, clearCart } = useCart()
+  const { items, subtotal, clearCart, isFoodCart } = useCart()
 
   // Address state
   const [addresses, setAddresses] = useState<Address[]>([])
@@ -317,6 +327,13 @@ export function CheckoutPage() {
   const [verifying, setVerifying] = useState(false)
   const [showPaystackModal, setShowPaystackModal] = useState(false)
   const [popupBlocked, setPopupBlocked] = useState(false)
+
+  const [preorderOptions, setPreorderOptions] = useState<PreorderOptions | null>(null)
+  const [loadingPreorder, setLoadingPreorder] = useState(false)
+  const [selectedPreorder, setSelectedPreorder] = useState<PreorderOption | null>(null)
+  const [fulfillmentMode, setFulfillmentMode] = useState<'asap' | 'preorder'>('asap')
+
+  const foodStoreId = isFoodCart ? (items[0]?.storeId || items[0]?.vendorId || '') : ''
 
   const fullName = useMemo(() => {
     return [userData?.firstName, userData?.lastName].filter(Boolean).join(' ').trim() || user?.email || 'Buyer'
@@ -370,6 +387,53 @@ export function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    if (!isFoodCart || !foodStoreId) {
+      setPreorderOptions(null)
+      setSelectedPreorder(null)
+      setFulfillmentMode('asap')
+      return
+    }
+
+    let cancelled = false
+    const load = async () => {
+      setLoadingPreorder(true)
+      try {
+        const data = await getPreorderOptions(foodStoreId)
+        if (cancelled) return
+        setPreorderOptions(data)
+        const first = data?.options?.[0] ?? null
+        setSelectedPreorder(first)
+        if (data?.preorderEnabled && !data.allowAsapWhenOpen) {
+          setFulfillmentMode('preorder')
+        } else {
+          setFulfillmentMode('asap')
+        }
+      } finally {
+        if (!cancelled) setLoadingPreorder(false)
+      }
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [foodStoreId, isFoodCart])
+
+  const preorderRequired = Boolean(
+    preorderOptions?.preorderEnabled && !preorderOptions.allowAsapWhenOpen,
+  )
+  const preorderAvailable = Boolean(preorderOptions?.preorderEnabled && preorderOptions.options.length)
+  const effectiveFulfillmentType: 'asap' | 'preorder' =
+    preorderRequired || fulfillmentMode === 'preorder' ? 'preorder' : 'asap'
+  const checkoutBlockedReason = useMemo(() => {
+    if (!isFoodCart) return null
+    if (preorderRequired && !preorderAvailable) {
+      return preorderOptions?.statusMessage || 'Preorders are closed for this vendor right now.'
+    }
+    if (effectiveFulfillmentType === 'preorder' && !selectedPreorder) {
+      return 'Please select a fulfillment date for your preorder.'
+    }
+    return null
+  }, [effectiveFulfillmentType, isFoodCart, preorderAvailable, preorderOptions?.statusMessage, preorderRequired, selectedPreorder])
+
   // Save new address via backend API
   const handleSaveAddress = async (addr: Omit<Address, 'docId' | 'isDefault'>) => {
     setSavingAddr(true)
@@ -397,6 +461,10 @@ export function CheckoutPage() {
       setError('Your cart is empty.')
       return
     }
+    if (checkoutBlockedReason) {
+      setError(checkoutBlockedReason)
+      return
+    }
     if (!contactPhone.trim()) {
       setError('Please enter a phone number so the driver can reach you.')
       return
@@ -413,6 +481,13 @@ export function CheckoutPage() {
     try {
       setPlacing(true)
       setError('')
+
+      const paymentExtras = effectiveFulfillmentType === 'preorder' && selectedPreorder
+        ? {
+            fulfillmentType: 'preorder' as const,
+            scheduledFor: selectedPreorder.scheduledFor,
+          }
+        : { fulfillmentType: 'asap' as const }
 
       const result = await createOrder({
         user,
@@ -437,20 +512,33 @@ export function CheckoutPage() {
               deliveryZone: 'off_campus',
             },
         paymentMethod,
+        fulfillmentType: paymentExtras.fulfillmentType,
+        ...(paymentExtras.fulfillmentType === 'preorder' && selectedPreorder
+          ? {
+              scheduledFor: selectedPreorder.scheduledFor,
+              preorderCutoffAt: selectedPreorder.cutoffAt,
+              scheduledLabel: selectedPreorder.label,
+            }
+          : {}),
       })
 
       const orderPricing = await calculateOrderPricing(result.orderId, promoCode.trim() || undefined)
       setPricing(orderPricing)
 
       if (paymentMethod === 'wallet') {
-        await payForOrderWithWallet(result.orderId, promoCode.trim() || undefined)
+        await payForOrderWithWallet(result.orderId, promoCode.trim() || undefined, paymentExtras)
+        await notifyNewOrder(result.orderId)
         clearCart()
         navigate(`/track?orderId=${encodeURIComponent(result.orderId)}`)
         return
       }
 
       // Paystack
-      const checkout = await initializePaystackCheckout(result.orderId, promoCode.trim() || undefined)
+      const checkout = await initializePaystackCheckout(
+        result.orderId,
+        promoCode.trim() || undefined,
+        paymentExtras,
+      )
       const newTab = window.open(checkout.authorization_url, '_blank', 'noopener,noreferrer')
       setPopupBlocked(!newTab)
       setPaystackUrl(checkout.authorization_url)
@@ -472,6 +560,7 @@ export function CheckoutPage() {
       for (let attempt = 0; attempt < 3; attempt += 1) {
         try {
           await verifyPaystackCheckout(paystackRef, paystackOrderId)
+          await notifyNewOrder(paystackOrderId)
           clearCart()
           setShowPaystackModal(false)
           navigate(`/track?orderId=${encodeURIComponent(paystackOrderId)}`)
@@ -513,7 +602,9 @@ export function CheckoutPage() {
   }, {})
 
   const ctaLabel = placing ? 'Processing…'
+    : checkoutBlockedReason ? 'Preorder unavailable'
     : paymentMethod === 'wallet' ? `Pay ₦${Math.round(total).toLocaleString()} with Wallet`
+    : effectiveFulfillmentType === 'preorder' ? 'Pay Preorder with Paystack →'
     : 'Pay with Paystack →'
 
   if (!items.length) {
@@ -687,6 +778,80 @@ export function CheckoutPage() {
               ))}
             </div>
 
+            {isFoodCart && (loadingPreorder || preorderOptions?.preorderEnabled) && (
+              <div className="co-card">
+                <div className="co-card-title">
+                  <div className="co-card-icon"><ClockIcon /></div>
+                  Fulfillment
+                </div>
+
+                {loadingPreorder ? (
+                  <div className="bm-skeleton" style={{ height: 72, borderRadius: 12 }} />
+                ) : (
+                  <>
+                    {preorderOptions?.statusMessage && (
+                      <div className="co-preorder-banner">
+                        <div className="co-preorder-title">
+                          {preorderRequired ? 'Preorder only' : 'Preorders available'}
+                        </div>
+                        <div className="co-preorder-sub">{preorderOptions.statusMessage}</div>
+                      </div>
+                    )}
+
+                    {preorderAvailable && preorderOptions?.allowAsapWhenOpen && (
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                        {([
+                          { key: 'asap' as const, label: 'Deliver ASAP' },
+                          { key: 'preorder' as const, label: 'Preorder for later' },
+                        ]).map((opt) => (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => setFulfillmentMode(opt.key)}
+                            style={{
+                              flex: 1,
+                              padding: '10px 12px',
+                              borderRadius: 12,
+                              fontSize: 13,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              fontFamily: 'Plus Jakarta Sans, sans-serif',
+                              border: `2px solid ${fulfillmentMode === opt.key ? '#f97316' : 'var(--border)'}`,
+                              background: fulfillmentMode === opt.key ? '#fff7ed' : '#fff',
+                              color: fulfillmentMode === opt.key ? '#c2410c' : 'var(--text)',
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {(preorderRequired || fulfillmentMode === 'preorder') && (
+                      <div className="co-preorder-options">
+                        {(preorderOptions?.options ?? []).map((opt) => (
+                          <div
+                            key={opt.scheduledFor}
+                            className={`co-preorder-option ${selectedPreorder?.scheduledFor === opt.scheduledFor ? 'selected' : ''}`}
+                            onClick={() => setSelectedPreorder(opt)}
+                          >
+                            <div className="co-preorder-option-label">{opt.label}</div>
+                            <div className="co-preorder-option-cutoff">Order by {opt.cutoffLabel}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {checkoutBlockedReason && (
+                      <div className="co-error" style={{ marginTop: 12 }}>
+                        {checkoutBlockedReason}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Delivery note */}
             <div className="co-card">
               <div className="co-card-title">
@@ -852,11 +1017,18 @@ export function CheckoutPage() {
               </div>
             )}
 
+            {effectiveFulfillmentType === 'preorder' && selectedPreorder && (
+              <div style={{ marginTop: 14, background: '#fff7ed', borderRadius: 10, padding: '10px 12px', border: '1px solid rgba(249,115,22,.2)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#c2410c', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>Preorder for</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#9a3412' }}>{selectedPreorder.label}</div>
+              </div>
+            )}
+
             <button
               className="co-place-btn"
               type="button"
               onClick={handlePlaceOrder}
-              disabled={placing || !deliveryReady}
+              disabled={placing || !deliveryReady || Boolean(checkoutBlockedReason)}
             >
               {ctaLabel}
             </button>
@@ -874,7 +1046,7 @@ export function CheckoutPage() {
             className="co-place-btn"
             type="button"
             onClick={handlePlaceOrder}
-            disabled={placing || !deliveryReady}
+            disabled={placing || !deliveryReady || Boolean(checkoutBlockedReason)}
             style={{ marginTop: 0 }}
           >
             {ctaLabel}

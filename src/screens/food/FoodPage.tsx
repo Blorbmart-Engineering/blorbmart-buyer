@@ -10,6 +10,7 @@ import { useUserLocation } from '../../hooks/useUserLocation'
 import { dashboardCss } from '../../components/dashboard/dashboardStyles'
 import { SearchIcon, StarIcon, UtensilsIcon, TimerIcon, MapPinIcon, HeartIcon, BagIcon } from '../../components/icons'
 import { FoodCartBar } from '../../components/FoodCartBar'
+import { getPreorderOptions } from '../../services/preorderService'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,8 @@ type Restaurant = {
   address: string
   totalReviews: number
   businessType: string
+  preorderStatusMessage?: string | null
+  preorderOnly?: boolean
 }
 
 type RecentOrder = {
@@ -103,8 +106,10 @@ async function loadRestaurants(): Promise<Restaurant[]> {
 
   // Open first, then by rating
   return restaurants.sort((a, b) => {
-    if (a.isOpen && !b.isOpen) return -1
-    if (!a.isOpen && b.isOpen) return 1
+    const aAvailable = a.isOpen || a.preorderOnly
+    const bAvailable = b.isOpen || b.preorderOnly
+    if (aAvailable && !bAvailable) return -1
+    if (!aAvailable && bAvailable) return 1
     return b.rating - a.rating
   })
 }
@@ -311,6 +316,7 @@ const css = `
   }
   .fp-card-status-badge.open { background:#00B894; }
   .fp-card-status-badge.closed { background:rgba(0,0,0,.45); }
+  .fp-card-status-badge.preorder { background:#f97316; max-width: 58%; text-align: right; line-height: 1.2; }
   .fp-card-body { padding:14px; }
   .fp-card-name {
     font-family:'Bricolage Grotesque',sans-serif;
@@ -373,7 +379,23 @@ export function FoodPage() {
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([])
 
   useEffect(() => {
-    loadRestaurants().then(list => { setRestaurants(list); setLoading(false) })
+    loadRestaurants().then(async (list) => {
+      const enriched = await Promise.all(list.map(async (r) => {
+        try {
+          const opts = await getPreorderOptions(r.id)
+          if (!opts?.preorderEnabled) return r
+          return {
+            ...r,
+            preorderStatusMessage: opts.statusMessage,
+            preorderOnly: !opts.allowAsapWhenOpen,
+          }
+        } catch {
+          return r
+        }
+      }))
+      setRestaurants(enriched)
+      setLoading(false)
+    })
   }, [])
 
   useEffect(() => {
@@ -592,9 +614,13 @@ export function FoodPage() {
                     <HeartIcon filled={favourites.has(r.id)} />
                   </button>
 
-                  {/* Open / Closed badge */}
-                  <div className={`fp-card-status-badge ${r.isOpen ? 'open' : 'closed'}`}>
-                    {r.isOpen ? 'Open' : 'Closed'}
+                  {/* Open / Closed / Preorder badge */}
+                  <div className={`fp-card-status-badge ${
+                    r.preorderOnly ? 'preorder' : r.isOpen ? 'open' : 'closed'
+                  }`}>
+                    {r.preorderOnly
+                      ? (r.preorderStatusMessage || 'Preorders open')
+                      : r.isOpen ? 'Open' : 'Closed'}
                   </div>
                 </div>
 

@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, serverTimestamp, setDoc, Timestamp } from 'firebase/firestore'
 import type { User } from 'firebase/auth'
 
 import { db } from '../lib/firebase'
@@ -18,6 +18,10 @@ type CheckoutInput = {
     deliveryZone?: 'campus' | 'off_campus'
   }
   paymentMethod: 'wallet' | 'paystack'
+  fulfillmentType?: 'asap' | 'preorder'
+  scheduledFor?: string
+  preorderCutoffAt?: string
+  scheduledLabel?: string
 }
 
 const resolveVendorAuthId = async (vendorOrStoreId: string) => {
@@ -119,6 +123,16 @@ export async function createOrder(input: CheckoutInput) {
     paymentStatus: 'pending',
     orderStatus: 'pending',
     status: 'placed',
+    fulfillmentType: input.fulfillmentType || 'asap',
+    ...(input.fulfillmentType === 'preorder' && input.scheduledFor
+      ? {
+          scheduledFor: Timestamp.fromDate(new Date(input.scheduledFor)),
+          preorderCutoffAt: input.preorderCutoffAt
+            ? Timestamp.fromDate(new Date(input.preorderCutoffAt))
+            : null,
+          scheduledLabel: input.scheduledLabel || null,
+        }
+      : {}),
     address: {
       street: input.address.street,
       city: input.address.city,

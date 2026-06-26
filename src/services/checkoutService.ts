@@ -48,10 +48,24 @@ export async function calculateOrderPricing(orderId: string, promoCode?: string)
   return payload.data as CheckoutPricing
 }
 
-export async function payForOrderWithWallet(orderId: string, promoCode?: string) {
+type CheckoutPaymentExtras = {
+  fulfillmentType?: 'asap' | 'preorder'
+  scheduledFor?: string
+}
+
+export async function payForOrderWithWallet(
+  orderId: string,
+  promoCode?: string,
+  extras?: CheckoutPaymentExtras,
+) {
   const response = await apiFetchAuth('/api/orders/checkout/wallet', {
     method: 'POST',
-    body: JSON.stringify({ orderId, promoCode: promoCode || null }),
+    body: JSON.stringify({
+      orderId,
+      promoCode: promoCode || null,
+      fulfillmentType: extras?.fulfillmentType,
+      scheduledFor: extras?.scheduledFor,
+    }),
   })
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
@@ -60,10 +74,19 @@ export async function payForOrderWithWallet(orderId: string, promoCode?: string)
   return payload.data
 }
 
-export async function initializePaystackCheckout(orderId: string, promoCode?: string) {
+export async function initializePaystackCheckout(
+  orderId: string,
+  promoCode?: string,
+  extras?: CheckoutPaymentExtras,
+) {
   const response = await apiFetchAuth('/api/orders/checkout/paystack', {
     method: 'POST',
-    body: JSON.stringify({ orderId, promoCode: promoCode || null }),
+    body: JSON.stringify({
+      orderId,
+      promoCode: promoCode || null,
+      fulfillmentType: extras?.fulfillmentType,
+      scheduledFor: extras?.scheduledFor,
+    }),
   })
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
@@ -88,4 +111,10 @@ export async function verifyPaystackCheckout(reference: string, orderId: string)
     throw new Error(payload?.message || 'Failed to verify Paystack payment')
   }
   return payload.data
+}
+
+export async function notifyNewOrder(orderId: string) {
+  await apiFetchAuth(`/api/orders/${encodeURIComponent(orderId)}/notify-new`, {
+    method: 'POST',
+  }).catch(() => undefined)
 }

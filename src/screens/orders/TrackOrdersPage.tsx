@@ -59,6 +59,9 @@ type Order = {
   orderStatus?: string
   paymentStatus?: string
   paymentMethod?: string
+  fulfillmentType?: string
+  scheduledLabel?: string
+  scheduledFor?: FsTs
   address?: Record<string, string>
   totalItems?: number
   storeCount?: number
@@ -84,6 +87,8 @@ const fmtDate = (ts?: FsTs | null, long = false) => {
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
   pending:    { label: 'Pending',     color: '#c2410c', bg: '#fff7ed' },
+  scheduled:  { label: 'Scheduled',   color: '#c2410c', bg: '#fff7ed' },
+  placed:     { label: 'Placed',      color: '#1d4ed8', bg: '#dbeafe' },
   processing: { label: 'Processing',  color: '#b45309', bg: '#fef3c7' },
   confirmed:  { label: 'Confirmed',   color: '#1d4ed8', bg: '#dbeafe' },
   preparing:  { label: 'Preparing',   color: '#7c3aed', bg: '#ede9fe' },
@@ -209,6 +214,14 @@ const DEFAULT_STEPS: StepData[] = [
   { title: 'Delivered',     description: 'Order has been delivered',        completed: false },
 ]
 
+const SCHEDULED_DEFAULT_STEPS: StepData[] = [
+  { title: 'Preorder Scheduled', description: 'Your preorder is confirmed for fulfillment', completed: true },
+  { title: 'Order Placed', description: 'Vendor will start preparing on fulfillment day', completed: false },
+  { title: 'Processing', description: 'Vendor is preparing your order', completed: false },
+  { title: 'Out for Delivery', description: 'Your order is on the way', completed: false },
+  { title: 'Delivered', description: 'Order has been delivered', completed: false },
+]
+
 function StatusTimeline({ steps, currentStep }: { steps: StepData[]; currentStep: number }) {
   return (
     <div className="to-timeline">
@@ -292,8 +305,9 @@ function OrderDetail({ order, onBack }: { order: Order; onBack?: () => void }) {
 
   const currentStatus = status?.status ?? order.orderStatus ?? 'pending'
   const sm = getStatusMeta(currentStatus)
-  const steps = status?.steps ?? DEFAULT_STEPS
-  const currentStep = status?.currentStep ?? 1
+  const isScheduled = currentStatus.toLowerCase() === 'scheduled'
+  const steps = status?.steps ?? (isScheduled ? SCHEDULED_DEFAULT_STEPS : DEFAULT_STEPS)
+  const currentStep = status?.currentStep ?? (isScheduled ? 1 : 1)
   const address = order.address as Record<string, string> | undefined
 
   return (
@@ -310,6 +324,11 @@ function OrderDetail({ order, onBack }: { order: Order; onBack?: () => void }) {
             {order.totalItems !== undefined && (
               <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 2 }}>
                 {order.totalItems} item{order.totalItems !== 1 ? 's' : ''} · {order.storeCount ?? 1} store{(order.storeCount ?? 1) !== 1 ? 's' : ''}
+              </div>
+            )}
+            {(order.scheduledLabel || order.fulfillmentType === 'preorder') && (
+              <div style={{ marginTop: 10, background: '#fff7ed', border: '1px solid rgba(249,115,22,.2)', borderRadius: 10, padding: '8px 12px', fontSize: 12.5, color: '#c2410c', fontWeight: 600 }}>
+                Preorder for {order.scheduledLabel || fmtDate(order.scheduledFor, true)}
               </div>
             )}
           </div>
@@ -340,6 +359,19 @@ function OrderDetail({ order, onBack }: { order: Order; onBack?: () => void }) {
           <span className="to-badge" style={{ background: sm.bg, color: sm.color }}>{sm.label.toUpperCase()}</span>
         </div>
         <StatusTimeline steps={steps} currentStep={currentStep} />
+        {currentStatus.toLowerCase() === 'scheduled' && (
+          <div className="to-eta" style={{ background: '#fff7ed', marginTop: 16 }}>
+            <span style={{ display: 'inline-flex' }}><ClockIcon /></span>
+            <div>
+              <div className="to-eta-text" style={{ color: '#c2410c' }}>Preorder confirmed</div>
+              <div className="to-eta-sub" style={{ color: '#9a3412' }}>
+                {order.scheduledLabel
+                  ? `Fulfillment: ${order.scheduledLabel}`
+                  : 'Your order will be prepared on the scheduled fulfillment day.'}
+              </div>
+            </div>
+          </div>
+        )}
         {status?.estimatedDelivery && (
           <div className="to-eta">
             <span style={{ display: 'inline-flex' }}><ClockIcon /></span>
@@ -550,7 +582,11 @@ export function TrackOrdersPage() {
                 <div className="to-stat-lbl">Delivered</div>
               </div>
               <div className="to-stat">
-                <div className="to-stat-val">{orders.filter(o => !['delivered','cancelled'].includes((o.orderStatus ?? '').toLowerCase())).length}</div>
+                <div className="to-stat-val">{orders.filter(o => (o.orderStatus ?? '').toLowerCase() === 'scheduled').length}</div>
+                <div className="to-stat-lbl">Scheduled</div>
+              </div>
+              <div className="to-stat">
+                <div className="to-stat-val">{orders.filter(o => !['delivered','cancelled','scheduled'].includes((o.orderStatus ?? '').toLowerCase())).length}</div>
                 <div className="to-stat-lbl">Active</div>
               </div>
               <div className="to-stat" style={{ flex: '2 1 160px' }}>

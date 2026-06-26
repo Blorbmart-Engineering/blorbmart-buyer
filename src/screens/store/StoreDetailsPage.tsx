@@ -8,6 +8,7 @@ import { PackageIcon, CloseIcon, UserCircleIcon, MapPinIcon } from '../../compon
 import { ProductCard } from '../../components/ProductCard'
 import { StarIcon, ClockIcon, TruckIcon } from '../../components/icons'
 import { FoodCartBar } from '../../components/FoodCartBar'
+import { getPreorderOptions, type PreorderOptions } from '../../services/preorderService'
 
 type Store = {
   id: string; vendorId?: string; storeName: string; logoUrl?: string; coverImageUrl?: string
@@ -116,6 +117,7 @@ export function StoreDetailsPage() {
   const [reviewStars, setReviewStars] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
+  const [preorderInfo, setPreorderInfo] = useState<PreorderOptions | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -167,7 +169,7 @@ export function StoreDetailsPage() {
             vendorId: (data.vendorId as string) || vendorId,
             storeId: snap.exists() ? snap.id : id,
             storeName: (data.storeName as string) || (data.name as string) || resolvedStoreName,
-          } as Product
+          } as unknown as Product
         }))
 
         // Fetch store reviews
@@ -182,6 +184,10 @@ export function StoreDetailsPage() {
             }
           }))
         } catch { /* no reviews */ }
+
+        if (id) {
+          getPreorderOptions(id).then(setPreorderInfo).catch(() => setPreorderInfo(null))
+        }
       } finally {
         setLoading(false)
       }
@@ -300,6 +306,16 @@ export function StoreDetailsPage() {
                   <div className="sd-store-name">{store?.storeName ?? 'Store'}</div>
                   {store?.description && (
                     <div className="sd-store-desc">{store.description}</div>
+                  )}
+                  {preorderInfo?.preorderEnabled && (
+                    <div style={{ marginBottom: 10, padding: '10px 12px', borderRadius: 12, background: '#fff7ed', border: '1px solid rgba(249,115,22,.25)', fontSize: 13, color: '#c2410c', fontWeight: 600, lineHeight: 1.5 }}>
+                      {preorderInfo.statusMessage || 'Preorders available'}
+                      {preorderInfo.options[0]?.label && (
+                        <div style={{ fontSize: 12, color: '#9a3412', fontWeight: 500, marginTop: 4 }}>
+                          Next fulfillment: {preorderInfo.options[0].label}
+                        </div>
+                      )}
+                    </div>
                   )}
                   <div className="sd-chips">
                     {store?.rating !== undefined && (
